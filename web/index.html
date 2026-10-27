@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocialBreak — Reclaim Your Attention</title>
+    <meta name="description" content="100% on-device digital wellness and short-form blocker. Strip Reels, Shorts, and algorithmic doomscroll loops with zero server footprint.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-logo">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <span class="brand-name">SocialBreak</span>
+                <span class="badge badge-pulse">v1.0.0 Local</span>
+            </div>
+
+            <nav class="nav-links">
+                <a href="#simulator" class="nav-link">Interactive Simulator</a>
+                <a href="#sandbox" class="nav-link">Reels Stripper Demo</a>
+                <a href="#gauntlet" class="nav-link">Friction Gauntlet</a>
+                <a href="#architecture" class="nav-link">Architecture</a>
+            </nav>
+
+            <div class="nav-actions">
+                <a href="../app/build/outputs/apk/debug/app-debug.apk" download class="btn btn-primary" id="top-download-btn">
+                    <span>Download APK</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-glow"></div>
+        <div class="container hero-container">
+            <div class="hero-content">
+                <div class="pill-tag">
+                    <span class="pulse-dot"></span>
+                    <span>100% On-Device • Zero Server Footprint</span>
+                </div>
+                <h1 class="hero-title">Break the Doomscroll.<br><span class="gradient-text">Keep Real Connection.</span></h1>
+                <p class="hero-subtitle">
+                    SocialBreak surgically strips Reels, Shorts, algorithmic feeds, and comment rabbit holes while keeping DMs and intentional communication intact. No cloud telemetry, no accounts required.
+                </p>
+
+                <div class="hero-metrics">
+                    <div class="metric-card">
+                        <div class="metric-value">0%</div>
+                        <div class="metric-label">Server Telemetry</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">&lt; 30MB</div>
+                        <div class="metric-label">Memory Footprint</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">100%</div>
+                        <div class="metric-label">Local DNS Filter</div>
+                    </div>
+                </div>
+
+                <div class="hero-ctas">
+                    <a href="../app/build/outputs/apk/debug/app-debug.apk" download class="btn btn-lg btn-primary">
+                        <span>Get SocialBreak for Android</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                    </a>
+                    <a href="#simulator" class="btn btn-lg btn-secondary">
+                        <span>Try Interactive Simulator</span>
+                    </a>
+                </div>
+                <div class="hero-compatibility">Verified on Samsung Galaxy S25 (SM-S931B) & Android 8.0+</div>
+            </div>
+
+            <!-- Live Smartphone Device Simulator -->
+            <div class="hero-phone" id="simulator">
+                <div class="phone-frame">
+                    <div class="phone-notch">
+                        <div class="notch-camera"></div>
+                    </div>
+                    <div class="phone-status-bar">
+                        <span>19:53</span>
+                        <div class="status-icons">
+                            <span class="signal-icon">●●●●</span>
+                            <span class="battery-icon">84%</span>
+                        </div>
+                    </div>
+
+                    <!-- Simulator Screen Canvas -->
+                    <div class="phone-screen" id="phone-screen">
+                        <!-- Screen 1: Sleep Mode -->
+                        <div class="screen-view active" id="view-sleep">
+                            <div class="sim-header">
+                                <h3>Sleep Mode</h3>
+                                <button class="icon-btn">⚙</button>
+                            </div>
+
+                            <div class="dial-container">
+                                <div class="dial-track" id="dial-track">
+                                    <svg class="dial-svg" viewBox="0 0 200 200">
+                                        <circle cx="100" cy="100" r="80" class="dial-bg-circle" />
+                                        <path d="M 100 20 A 80 80 0 0 1 180 100" class="dial-active-arc" id="dial-arc" />
+                                    </svg>
+                                    <div class="dial-center">
+                                        <span class="dial-hours" id="dial-duration-text">8h</span>
+                                        <span class="dial-sub">Scheduled Sleep</span>
+                                    </div>
+                                </div>
+                                <p class="sim-hint">Drag dial to adjust bedtime</p>
+                            </div>
+
+                            <div class="time-cards-row">
+                                <div class="time-card">
+                                    <span class="time-card-val" id="bedtime-val">11:00 pm</span>
+                                    <span class="time-card-lbl">Bedtime</span>
+                                </div>
+                                <div class="time-card">
+                                    <span class="time-card-val" id="wakeup-val">7:00 am</span>
+                                    <span class="time-card-lbl">Wake Up</span>
+                                </div>
+                            </div>
+
+                            <div class="pill-row">
+                                <div class="sim-pill">Wind down: <strong>30 min</strong></div>
+                                <div class="sim-pill">Allowed: <strong class="text-emerald">None</strong></div>
+                            </div>
+
+                            <button class="btn btn-full btn-purple" id="sim-sleep-toggle">
+                                <span id="sleep-toggle-label">Turn on Sleep Mode →</span>
+                            </button>
+                        </div>
+
+                        <!-- Screen 2: Full App Blocking -->
+                        <div class="screen-view" id="view-blocking">
+                            <div class="sim-header">
+                                <h3>Full App Blocking</h3>
+                                <button class="icon-btn">ℹ</button>
+                            </div>
+                            <div class="category-tiles">
+                                <div class="cat-tile active">
+                                    <span class="cat-name">Social</span>
+                                    <span class="cat-stat">6 active</span>
+                                </div>
+                                <div class="cat-tile">
+                                    <span class="cat-name">Other apps</span>
+                                    <span class="cat-stat text-muted">0 apps</span>
+                                </div>
+                            </div>
+                            <div class="timer-display" id="block-timer-display">30:00</div>
+                            <div class="stepper-row">
+                                <button class="step-btn" id="step-minus">-</button>
+                                <span class="step-val" id="step-val-text">30 min</span>
+                                <button class="step-btn" id="step-plus">+</button>
+                            </div>
+                            <div class="focus-preset-chips">
+                                <span class="preset-chip active" data-time="25">25m sprint</span>
+                                <span class="preset-chip" data-time="60">1h study</span>
+                                <span class="preset-chip" data-time="120">2h deep work</span>
+                            </div>
+                            <button class="btn btn-full btn-blue" id="sim-block-start-btn">Start 30 min block</button>
+                        </div>
+
+                        <!-- Screen 3: Home Dashboard -->
+                        <div class="screen-view" id="view-home">
+                            <div class="sim-header">
+                                <h3>SocialBreak</h3>
+                                <button class="pill-tag-btn" id="open-gauntlet-btn">🔒 Hard Mode</button>
+                            </div>
+                            <div class="node-graph-card">
+                                <div class="node-cluster">
+                                    <div class="center-hub">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="app-node node-yt">YT<span class="node-sub">0:00</span></div>
+                                    <div class="app-node node-ig">IG<span class="node-sub">0:00</span></div>
+                                    <div class="app-node node-tt">TT<span class="node-sub">0:00</span></div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Today</span>
+                                    <span class="stat-badge text-emerald" id="today-stripped-badge">14 stripped</span>
+                                </div>
+                                <p class="stat-desc">Successfully shielded you from short-form dopamine traps today.</p>
+                            </div>
+                        </div>
+
+                        <!-- Screen 4: WebApps Tab -->
+                        <div class="screen-view" id="view-webapps">
+                            <div class="sim-header">
+                                <h3>Inside SocialBreak</h3>
+                            </div>
+                            <p class="sim-desc">Distraction-free web clients with Reels, Shorts, and ads stripped.</p>
+                            <div class="webapp-cards">
+                                <div class="webapp-card ig-gradient">
+                                    <h4>Instagram Clean</h4>
+                                    <div class="webapp-badges">
+                                        <span>✓ Reels Blocked</span>
+                                        <span>✓ DMs Active</span>
+                                    </div>
+                                </div>
+                                <div class="webapp-card yt-gradient">
+                                    <h4>YouTube Clean</h4>
+                                    <div class="webapp-badges">
+                                        <span>✓ Shorts Blocked</span>
+                                        <span>✓ Audio in BG</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Screen 5: Analytics Tab -->
+                        <div class="screen-view" id="view-analytics">
+                            <div class="sim-header">
+                                <h3>Today Analytics</h3>
+                            </div>
+                            <div class="big-metric-circle">
+                                <span class="big-metric-num" id="analytics-blocks-num">14</span>
+                                <span class="big-metric-lbl">Blocks landed</span>
+                            </div>
+                            <div class="breakdown-list">
+                                <div class="breakdown-item">
+                                    <span>Reels/Shorts Trapped</span>
+                                    <strong id="analytics-shorts-trapped">14</strong>
+                                </div>
+                                <div class="breakdown-item">
+                                    <span>Shielded Social Apps</span>
+                                    <strong>6</strong>
+                                </div>
+                                <div class="breakdown-item">
+                                    <span>Time in Addictive Feeds</span>
+                                    <strong class="text-emerald">0m</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Nav -->
+                    <div class="phone-nav-bar">
+                        <button class="sim-nav-item active" data-tab="sleep">
+                            <span class="sim-nav-icon">🌙</span>
+                            <span class="sim-nav-text">Sleep</span>
+                        </button>
+                        <button class="sim-nav-item" data-tab="blocking">
+                            <span class="sim-nav-icon">🔒</span>
+                            <span class="sim-nav-text">Blocking</span>
+                        </button>
+                        <button class="sim-nav-item" data-tab="home">
+                            <span class="sim-nav-icon">🏠</span>
+                            <span class="sim-nav-text">Home</span>
+                        </button>
+                        <button class="sim-nav-item" data-tab="webapps">
+                            <span class="sim-nav-icon">🌐</span>
+                            <span class="sim-nav-text">WebApps</span>
+                        </button>
+                        <button class="sim-nav-item" data-tab="analytics">
+                            <span class="sim-nav-icon">📊</span>
+                            <span class="sim-nav-text">Analytics</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Reels & Shorts Stripping Sandbox -->
+    <section class="section sandbox-section" id="sandbox">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="section-tag">Interactive Content Filter</span>
+                <h2 class="section-title">Experience the Feed Cleaner in Real Time</h2>
+                <p class="section-subtitle">
+                    Toggle SocialBreak's content script to witness how it surgically eliminates algorithmic doomscroll elements while preserving what actually matters.
+                </p>
+                <div class="sandbox-toggle-row">
+                    <span class="toggle-label" id="sandbox-status-label">SocialBreak Filter: <strong class="text-emerald">Active</strong></span>
+                    <label class="switch">
+                        <input type="checkbox" id="sandbox-filter-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="sandbox-feed" id="sandbox-feed">
+                <!-- Intentional Friend Message -->
+                <div class="feed-item card-safe">
+                    <div class="feed-header">
+                        <div class="avatar avatar-1"></div>
+                        <div>
+                            <strong>Sarah Jenkins</strong> <span class="badge badge-dm">Direct Message</span>
+                            <div class="feed-sub">Sent a video to your inbox</div>
+                        </div>
+                    </div>
+                    <div class="feed-body">
+                        "Hey, check out this lecture snippet from Professor Miller on distributed consensus!"
+                    </div>
+                    <div class="video-preview">
+                        <div class="play-btn-circle">▶</div>
+                        <span>Intentional Video Clip (Watchable)</span>
+                    </div>
+                </div>
+
+                <!-- Addictive Reel Card (Stripped by Filter) -->
+                <div class="feed-item card-distraction" id="card-reel">
+                    <div class="feed-header">
+                        <div class="avatar avatar-ad"></div>
+                        <div>
+                            <strong>Algorithmic Reel</strong> <span class="badge badge-distraction">Dopamine Trap</span>
+                            <div class="feed-sub">Recommended because you watched similar videos</div>
+                        </div>
+                    </div>
+                    <div class="video-preview vertical-reel">
+                        <span>Infinite 15-Second Loop Video</span>
+                    </div>
+                    <div class="card-distraction-overlay">
+                        <span>STRIPPED BY SOCIALBREAK</span>
+                    </div>
+                </div>
+
+                <!-- Clickbait Ad (Stripped by Filter) -->
+                <div class="feed-item card-distraction" id="card-ad">
+                    <div class="feed-header">
+                        <div class="avatar avatar-ad"></div>
+                        <div>
+                            <strong>Sponsored Brand</strong> <span class="badge badge-distraction">Algorithmic Ad</span>
+                            <div class="feed-sub">Promoted Feed Insertion</div>
+                        </div>
+                    </div>
+                    <div class="feed-body">
+                        "You won't believe what happens when you click this link..."
+                    </div>
+                    <div class="card-distraction-overlay">
+                        <span>BLOCKED BY SOCIALBREAK</span>
+                    </div>
+                </div>
+
+                <!-- Intentional Work Post -->
+                <div class="feed-item card-safe">
+                    <div class="feed-header">
+                        <div class="avatar avatar-2"></div>
+                        <div>
+                            <strong>Alex Rivera</strong> <span class="badge badge-dm">Colleague</span>
+                            <div class="feed-sub">25 minutes ago</div>
+                        </div>
+                    </div>
+                    <div class="feed-body">
+                        "Finalized the quarterly release notes. Everything is deployed to production cleanly."
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Playable 4-Stage Friction Gauntlet -->
+    <section class="section gauntlet-section" id="gauntlet">
+        <div class="container">
+            <div class="gauntlet-container">
+                <div class="gauntlet-info">
+                    <span class="section-tag text-amber">Anti-Impulse Protection</span>
+                    <h2 class="section-title">The 4-Stage Friction Gauntlet</h2>
+                    <p class="section-subtitle">
+                        When Hard Mode is active, disabling app blocks requires deliberate mental focus. Impulsive app opens cannot survive these 4 stages of behavioral friction.
+                    </p>
+                    <div class="gauntlet-steps-list">
+                        <div class="gauntlet-step-item">
+                            <span class="step-num">01</span>
+                            <div>
+                                <strong>Typed Commitment</strong>
+                                <p>Type the exact solemn sentence acknowledging you are breaking your pledge.</p>
+                            </div>
+                        </div>
+                        <div class="gauntlet-step-item">
+                            <span class="step-num">02</span>
+                            <div>
+                                <strong>Mental Clarity Puzzles</strong>
+                                <p>Solve 5 procedural arithmetic calculations to activate your prefrontal cortex.</p>
+                            </div>
+                        </div>
+                        <div class="gauntlet-step-item">
+                            <span class="step-num">03</span>
+                            <div>
+                                <strong>Unskippable Cooldown</strong>
+                                <p>Wait through a mandatory timer. Dopamine urgency naturally dissolves after 30–60s.</p>
+                            </div>
+                        </div>
+                        <div class="gauntlet-step-item">
+                            <span class="step-num">04</span>
+                            <div>
+                                <strong>Deliberate Confirmation</strong>
+                                <p>Confirm your conscious choice. Off stays off only when explicitly decided.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Gauntlet Modal Simulator -->
+                <div class="gauntlet-card">
+                    <div class="gauntlet-card-header">
+                        <span class="text-amber">🔒 Hard Mode Test Gauntlet</span>
+                        <span class="badge badge-amber" id="gauntlet-stage-badge">Stage 1 of 4</span>
+                    </div>
+
+                    <!-- Stage 1 View -->
+                    <div class="gauntlet-stage active" id="gauntlet-s1">
+                        <p class="gauntlet-instruction">Type this exact phrase to confirm deliberate intent:</p>
+                        <blockquote class="gauntlet-quote">"I am breaking my digital wellness commitment"</blockquote>
+                        <input type="text" class="gauntlet-input" id="gauntlet-input-phrase" placeholder="Type commitment phrase...">
+                        <button class="btn btn-full btn-amber" id="gauntlet-btn-s1" disabled>Proceed to Math Check</button>
+                    </div>
+
+                    <!-- Stage 2 View -->
+                    <div class="gauntlet-stage" id="gauntlet-s2">
+                        <p class="gauntlet-instruction">Mental Clarity Check (<span id="math-progress">0/5</span> solved)</p>
+                        <div class="math-question" id="math-question-text">24 + 17 = ?</div>
+                        <input type="number" class="gauntlet-input" id="gauntlet-input-math" placeholder="Enter answer...">
+                        <button class="btn btn-full btn-blue" id="gauntlet-btn-s2">Submit Answer</button>
+                    </div>
+
+                    <!-- Stage 3 View -->
+                    <div class="gauntlet-stage" id="gauntlet-s3">
+                        <p class="gauntlet-instruction">Mandatory Cooldown Period</p>
+                        <div class="cooldown-timer" id="cooldown-timer-display">15s</div>
+                        <p class="cooldown-sub">Waiting out the impulse resets your dopamine baseline.</p>
+                    </div>
+
+                    <!-- Stage 4 View -->
+                    <div class="gauntlet-stage" id="gauntlet-s4">
+                        <p class="gauntlet-instruction text-coral">Final Intent Confirmation</p>
+                        <p class="gauntlet-confirm-desc">Are you completely certain you want to exit Hard Mode?</p>
+                        <button class="btn btn-full btn-coral" id="gauntlet-btn-s4">Disable Hard Mode Protection</button>
+                    </div>
+
+                    <!-- Success View -->
+                    <div class="gauntlet-stage" id="gauntlet-success">
+                        <div class="text-emerald" style="font-size: 32px; margin-bottom: 12px;">✓</div>
+                        <h4>Gauntlet Completed</h4>
+                        <p class="gauntlet-confirm-desc">You successfully proved deliberate intent. Hard Mode unlocked.</p>
+                        <button class="btn btn-full btn-secondary" id="gauntlet-reset-btn">Reset Gauntlet Demo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture & Zero-Server Explainer -->
+    <section class="section arch-section" id="architecture">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="section-tag text-emerald">Technical Architecture</span>
+                <h2 class="section-title">100% Local-First Engine</h2>
+                <p class="section-subtitle">
+                    How SocialBreak protects your attention without compromising your privacy or personal data.
+                </p>
+            </div>
+
+            <div class="arch-grid">
+                <div class="arch-card">
+                    <div class="arch-icon">🛡️</div>
+                    <h3>Local DNS Sinkhole</h3>
+                    <p>Uses Android's <code>VpnService</code> to construct a local loopback TUN interface. Blacklisted domains (adult, casino, gaming, addictive social) are dropped locally at 0.0.0.0 with zero network hops.</p>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-icon">⚡</div>
+                    <h3>Zero-Allocation Accessibility</h3>
+                    <p>Monitors foreground app transitions using lightweight debounced event queues. Keeps CPU usage at 0% when idle and RAM under 30MB PSS.</p>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-icon">🔐</div>
+                    <h3>Device Admin Anti-Tampering</h3>
+                    <p>Leverages native Android <code>DeviceAdminReceiver</code> to prevent impulsive uninstallation during active Hard Mode schedules.</p>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-icon">💾</div>
+                    <h3>Zero Cloud Telemetry</h3>
+                    <p>All daily usage stats, streak logs, and timer configurations live exclusively in local Jetpack DataStore preferences on your phone storage.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="section download-section" id="download">
+        <div class="container text-center">
+            <h2 class="section-title">Install SocialBreak Directly</h2>
+            <p class="section-subtitle">Compiled, verified, and ready for installation on your Android device.</p>
+
+            <div class="download-card">
+                <div class="download-card-body">
+                    <div class="apk-badge">RELEASE BUILD</div>
+                    <h3 class="apk-title">SocialBreak v1.0.0 Debug</h3>
+                    <div class="apk-meta">
+                        <span>Target: Android 8.0 - 15</span> • <span>Size: 17.6 MB</span> • <span>Architecture: ARM64-v8a</span>
+                    </div>
+                    <div class="apk-hash">
+                        <code>Package: com.socialbreak.android</code>
+                    </div>
+                    <a href="../app/build/outputs/apk/debug/app-debug.apk" download class="btn btn-lg btn-primary btn-block">
+                        <span>Download app-debug.apk</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-brand">
+                <span class="brand-name">SocialBreak</span>
+                <span class="footer-copy">© 2026 SocialBreak. Open architecture, 100% on-device digital wellbeing.</span>
+            </div>
+            <div class="footer-links">
+                <a href="#simulator">Simulator</a>
+                <a href="#sandbox">Sandbox</a>
+                <a href="#gauntlet">Gauntlet</a>
+                <a href="#architecture">Architecture</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
