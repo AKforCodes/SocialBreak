@@ -33,7 +33,7 @@ SocialBreak/
 
 ## Installation
 
-Download the verified release APK directly from [`release/SocialBreak-v1.0.0.apk`](./release/SocialBreak-v1.0.0.apk) or run:
+Download the verified release APK directly from [GitHub Releases (SocialBreak-v1.0.0.apk)](https://github.com/AKforCodes/SocialBreak/releases/download/v1.0.0/SocialBreak-v1.0.0.apk) or run:
 
 ```bash
 adb install release/SocialBreak-v1.0.0.apk
