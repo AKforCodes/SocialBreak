@@ -253,10 +253,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let cooldownInterval = null;
 
     function generateMathQuestion() {
-        const a = Math.floor(Math.random() * 40) + 12;
-        const b = Math.floor(Math.random() * 30) + 11;
-        currentMathAnswer = a + b;
-        mathQuestionText.textContent = `${a} + ${b} = ?`;
+        const a = Math.floor(Math.random() * 9) + 6; // 6 - 14
+        const b = Math.floor(Math.random() * 8) + 4; // 4 - 11
+        const c = Math.floor(Math.random() * 7) + 3; // 3 - 9
+        currentMathAnswer = (a * b) - c;
+        mathQuestionText.textContent = `(${a} × ${b}) - ${c} = ?`;
         inputMath.value = '';
     }
 
@@ -351,6 +352,71 @@ document.addEventListener('DOMContentLoaded', () => {
     if (openGauntletBtn) {
         openGauntletBtn.addEventListener('click', () => {
             document.getElementById('gauntlet').scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+
+    // -------------------------------------------------------------
+    // 6. Zero-Server Subsystems: Web Filter Chips, Grayscale & Backup
+    // -------------------------------------------------------------
+    const filterChips = document.querySelectorAll('.filter-chip');
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            chip.classList.toggle('active');
+        });
+    });
+
+    const grayscaleToggle = document.getElementById('sim-grayscale-toggle');
+    const phoneScreen = document.getElementById('phone-screen');
+    if (grayscaleToggle && phoneScreen) {
+        grayscaleToggle.addEventListener('change', () => {
+            if (grayscaleToggle.checked) {
+                phoneScreen.style.filter = 'grayscale(1)';
+            } else {
+                phoneScreen.style.filter = 'none';
+            }
+        });
+        // Initial state is grayscale enabled
+        phoneScreen.style.filter = 'grayscale(1)';
+    }
+
+    const exportBackupBtn = document.getElementById('sim-export-backup-btn');
+    const importBackupBtn = document.getElementById('sim-import-backup-btn');
+    const backupStatusMsg = document.getElementById('backup-status-msg');
+
+    if (exportBackupBtn) {
+        exportBackupBtn.addEventListener('click', () => {
+            const simulatedBackup = {
+                version: 1,
+                app: "SocialBreak",
+                algorithm: "AES-256-GCM",
+                zeroServer: true,
+                timestamp: Date.now(),
+                exportedDate: new Date().toISOString(),
+                payload: "7f8b91a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8"
+            };
+            const blob = new Blob([JSON.stringify(simulatedBackup, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `socialbreak_backup_${new Date().toISOString().slice(0, 10)}.sbk`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            if (backupStatusMsg) {
+                backupStatusMsg.textContent = "✓ Exported AES-256 local backup (.sbk)";
+                setTimeout(() => { backupStatusMsg.textContent = ""; }, 3500);
+            }
+        });
+    }
+
+    if (importBackupBtn) {
+        importBackupBtn.addEventListener('click', () => {
+            if (backupStatusMsg) {
+                backupStatusMsg.textContent = "✓ Backup verified & restored (0 network pings)";
+                setTimeout(() => { backupStatusMsg.textContent = ""; }, 3500);
+            }
         });
     }
 });

@@ -63,6 +63,9 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        val weeklyCompliance = remember { com.socialbreak.android.data.AppUsageTracker.getWeeklyCompliance(context) }
+        val daysWithinLimit = remember(weeklyCompliance) { weeklyCompliance.count { it } }
+
         // 7-Petal Floral Radial Achievement Visualizer
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -83,20 +86,20 @@ fun ProfileScreen(
                         val center = Offset(size.width / 2, size.height / 2)
                         val petalRadius = 20.dp.toPx()
                         val orbitRadius = 45.dp.toPx()
-                        val days = listOf("S", "M", "T", "W", "T", "F", "S")
 
                         for (i in 0 until 7) {
                             val angle = Math.toRadians((i * (360.0 / 7) - 90)).toFloat()
                             val cx = center.x + orbitRadius * cos(angle)
                             val cy = center.y + orbitRadius * sin(angle)
+                            val isCompliant = if (i < weeklyCompliance.size) weeklyCompliance[i] else false
 
                             drawCircle(
-                                color = BgTertiary,
+                                color = if (isCompliant) AccentEmerald else BgTertiary,
                                 radius = petalRadius,
                                 center = Offset(cx, cy)
                             )
                             drawCircle(
-                                color = BorderSubtle,
+                                color = if (isCompliant) AccentEmerald.copy(alpha = 0.5f) else BorderSubtle,
                                 radius = petalRadius,
                                 center = Offset(cx, cy),
                                 style = Stroke(width = 1.5.dp.toPx())
@@ -119,7 +122,7 @@ fun ProfileScreen(
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "0",
+                            text = daysWithinLimit.toString(),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = TextHighlight
@@ -130,13 +133,13 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "0 days within your limit",
+                    text = "$daysWithinLimit days within your limit",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = TextHighlight
                 )
                 Text(
-                    text = "First full goal day starts tomorrow",
+                    text = if (daysWithinLimit == 0) "First full goal day starts tomorrow" else "Great progress maintaining focus this week",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted,
                     modifier = Modifier.padding(top = 2.dp)

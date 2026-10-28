@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
                             SubScreen.SETTINGS -> SettingsScreen(prefs)
                             SubScreen.ANALYTICS -> TodayAnalyticsScreen(prefs)
                             SubScreen.WEB_BLOCKING -> WebBlockingScreen(prefs, onBack = { activeSubScreen = SubScreen.NONE })
-                            SubScreen.ACCOUNT -> AccountScreen(onBack = { activeSubScreen = SubScreen.NONE })
+                            SubScreen.ACCOUNT -> AccountScreen(prefs = prefs, onBack = { activeSubScreen = SubScreen.NONE })
                             SubScreen.NONE -> {
                                 when (selectedTab) {
                                     ScreenTab.SLEEP -> SleepModeScreen(

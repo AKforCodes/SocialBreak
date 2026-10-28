@@ -126,6 +126,29 @@
         if (/\/(p|reel|tv)\//.test(location.pathname)) document.querySelectorAll('ul').forEach(function(ul) {
             if (ul.querySelectorAll('time').length >= 2) mark(ul);
         });
+
+        // Terminal Feed Breaker & On-Device Keyword Blocker
+        var postLimit = (r.max_feed_posts !== undefined) ? r.max_feed_posts : (r.terminal_feed_breaker ? 3 : 0);
+        var blockedKeywords = Array.isArray(r.blocked_keywords) ? r.blocked_keywords : [];
+        if (postLimit > 0 || blockedKeywords.length > 0) {
+            var feedSelectors = 'article,[data-testid="cellInnerDiv"],div[role="feed"] > div,.feed-shared-update-v2,ytm-rich-item-renderer,shreddit-post,div[data-pagelet*="FeedUnit"]';
+            var feedItems = document.querySelectorAll(feedSelectors);
+            var visibleCount = 0;
+            feedItems.forEach(function(item) {
+                if (!item || item.hasAttribute(attr)) return;
+                var text = (item.textContent || '').toLowerCase();
+                if (blockedKeywords.length > 0 && blockedKeywords.some(function(kw) { return kw && text.indexOf(kw.toLowerCase()) !== -1; })) {
+                    item.style.setProperty('display', 'none', 'important');
+                    return;
+                }
+                if (postLimit > 0) {
+                    visibleCount++;
+                    if (visibleCount > postLimit) {
+                        item.style.setProperty('display', 'none', 'important');
+                    }
+                }
+            });
+        }
     }
     // iOS Sep 13: nested rich-text composer targets must not accidentally send on Enter.
     // Capture only chat fields, never search or login. IME commit remains native after stopping send.

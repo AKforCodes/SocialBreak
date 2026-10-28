@@ -987,7 +987,190 @@ input:checked + .slider:before { transform: translateX(22px); }
     align-items: center;
 }
 .footer-copy { font-size: 12px; color: var(--text-muted); margin-left: 12px; }
-.footer-links { display: flex; gap: 20px; font-size: 13px; color: var(--text-secondary); }
+/* Web Presets Filter Chips */
+.web-presets-accordion {
+    margin: 12px 0 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px;
+}
+.web-presets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.web-presets-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.filter-chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.filter-chip {
+    font-size: 10px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.filter-chip.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--accent-blue);
+    color: #60A5FA;
+    font-weight: 600;
+}
+
+/* 7-Petal Floral Radial Achievement Chart */
+.floral-chart-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 12px;
+}
+.floral-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.floral-chart-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-highlight);
+}
+.floral-svg-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 4px 0;
+}
+.floral-svg {
+    width: 140px;
+    height: 140px;
+    filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.25));
+}
+.floral-days-legend {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 12px 0;
+}
+.day-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+.day-dot.active {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--accent-emerald);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+}
+.day-dot.active.current {
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+    background: var(--accent-emerald);
+    color: #000;
+}
+
+/* System Controls List */
+.system-controls-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.sys-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+}
+.sys-info {
+    display: flex;
+    flex-direction: column;
+}
+.sys-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.sys-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+.switch-sm {
+    width: 36px;
+    height: 20px;
+}
+.switch-sm .slider:before {
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+}
+.switch-sm input:checked + .slider:before {
+    transform: translateX(16px);
+}
+
+/* Encrypted Local Backup Card */
+.backup-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+}
+.backup-header {
+    margin-bottom: 4px;
+}
+.backup-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-highlight);
+}
+.backup-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+.backup-desc code {
+    background: var(--bg-tertiary);
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #60A5FA;
+}
+.backup-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.btn-sm {
+    padding: 7px 10px;
+    font-size: 11px;
+}
+.backup-status {
+    margin-top: 8px;
+    font-size: 11px;
+    text-align: center;
+    color: var(--accent-emerald);
+}
 
 /* Responsive adjustments */
 @media (max-width: 960px) {

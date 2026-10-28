@@ -1,5 +1,6 @@
 package com.socialbreak.android.ui.components
 
+import android.os.SystemClock
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,7 +19,7 @@ import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
-private const val COMMITMENT_PHRASE = "I am breaking my digital wellness commitment"
+private const val COMMITMENT_PHRASE = "I am deliberately choosing to break my wellness commitment and waste my attention"
 
 @Composable
 fun FrictionGauntletDialog(
@@ -27,23 +28,33 @@ fun FrictionGauntletDialog(
 ) {
     var stage by remember { mutableIntStateOf(1) } // 1: Commitment, 2: Math (5 questions), 3: Cooldown, 4: Confirm
     var commitmentInput by remember { mutableStateOf("") }
-    
-    // Math questions state
-    var mathCount by remember { mutableIntStateOf(0) }
-    var numA by remember { mutableIntStateOf(Random.nextInt(12, 49)) }
-    var numB by remember { mutableIntStateOf(Random.nextInt(11, 38)) }
-    var mathAnswerInput by remember { mutableStateOf("") }
 
-    // Cooldown state
-    var cooldownSeconds by remember { mutableIntStateOf(60) }
+    // Multi-operation Math questions state
+    var mathCount by remember { mutableIntStateOf(0) }
+    var numA by remember { mutableIntStateOf(Random.nextInt(6, 15)) }
+    var numB by remember { mutableIntStateOf(Random.nextInt(4, 9)) }
+    var numC by remember { mutableIntStateOf(Random.nextInt(7, 25)) }
+    var expectedAnswer by remember { mutableIntStateOf((numA * numB) - numC) }
+    var mathAnswerInput by remember { mutableStateOf("") }
+    var mathError by remember { mutableStateOf(false) }
+
+    // Monotonic Hardware Cooldown state
+    var cooldownRemaining by remember { mutableIntStateOf(60) }
+    var cooldownEndRealtime by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(stage) {
         if (stage == 3) {
-            while (cooldownSeconds > 0) {
-                delay(1000L)
-                cooldownSeconds--
+            cooldownEndRealtime = SystemClock.elapsedRealtime() + 60000L
+            while (true) {
+                val remainingMs = cooldownEndRealtime - SystemClock.elapsedRealtime()
+                if (remainingMs <= 0L) {
+                    cooldownRemaining = 0
+                    stage = 4
+                    break
+                }
+                cooldownRemaining = (remainingMs / 1000L).toInt() + 1
+                delay(250L)
             }
-            stage = 4
         }
     }
 
@@ -60,11 +71,13 @@ fun FrictionGauntletDialog(
                 Text(
                     text = "Hard Mode Gauntlet",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = AccentAmber
+                    color = AccentAmber,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "Stage $stage of 4: Anti-Impulse Protection",
                     style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted,
                     modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
                 )
 
@@ -113,14 +126,19 @@ fun FrictionGauntletDialog(
                             color = TextSecondary
                         )
                         Text(
-                            text = "$numA + $numB = ?",
+                            text = "($numA × $numB) - $numC = ?",
                             style = MaterialTheme.typography.headlineMedium,
                             color = TextHighlight,
+                            fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(vertical = 16.dp)
                         )
                         OutlinedTextField(
                             value = mathAnswerInput,
-                            onValueChange = { mathAnswerInput = it },
+                            onValueChange = {
+                                mathAnswerInput = it
+                                mathError = false
+                            },
+                            isError = mathError,
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text("Answer", color = TextMuted) },
                             colors = OutlinedTextFieldDefaults.colors(
@@ -131,17 +149,32 @@ fun FrictionGauntletDialog(
                             ),
                             shape = RoundedCornerShape(12.dp)
                         )
+                        if (mathError) {
+                            Text(
+                                text = "Incorrect. Try again.",
+                                color = AccentCoral,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                         Spacer(modifier = Modifier.height(20.dp))
                         Button(
                             onClick = {
-                                if (mathAnswerInput.trim().toIntOrNull() == (numA + numB)) {
+                                val entered = mathAnswerInput.trim().toIntOrNull()
+                                if (entered == expectedAnswer) {
                                     mathCount++
                                     mathAnswerInput = ""
-                                    numA = Random.nextInt(15, 65)
-                                    numB = Random.nextInt(12, 45)
+                                    mathError = false
                                     if (mathCount >= 5) {
                                         stage = 3
+                                    } else {
+                                        numA = Random.nextInt(7, 18)
+                                        numB = Random.nextInt(4, 9)
+                                        numC = Random.nextInt(8, 30)
+                                        expectedAnswer = (numA * numB) - numC
                                     }
+                                } else {
+                                    mathError = true
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -158,14 +191,14 @@ fun FrictionGauntletDialog(
                             color = TextSecondary
                         )
                         Text(
-                            text = "${cooldownSeconds}s",
+                            text = "${cooldownRemaining}s",
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Bold,
                             color = AccentAmber,
                             modifier = Modifier.padding(vertical = 24.dp)
                         )
                         Text(
-                            text = "Take a breath. Waiting out the impulse is part of breaking the dopamine loop.",
+                            text = "Take a breath. Waiting out the impulse is part of breaking the dopamine loop. This cooldown is backed by your device's hardware clock.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextMuted,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -175,7 +208,8 @@ fun FrictionGauntletDialog(
                         Text(
                             text = "Final Confirmation",
                             style = MaterialTheme.typography.headlineSmall,
-                            color = AccentCoral
+                            color = AccentCoral,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Are you certain you want to turn off Hard Mode protection?",

@@ -170,6 +170,19 @@
                                 <span class="preset-chip" data-time="60">1h study</span>
                                 <span class="preset-chip" data-time="120">2h deep work</span>
                             </div>
+                            <div class="web-presets-accordion">
+                                <div class="web-presets-header">
+                                    <span class="web-presets-title">🛡️ On-Device Web Filter (TUN Sinkhole)</span>
+                                    <span class="badge badge-emerald">108 Domains</span>
+                                </div>
+                                <div class="filter-chips-grid">
+                                    <span class="filter-chip active">Social (16)</span>
+                                    <span class="filter-chip active">Casual Gaming (21)</span>
+                                    <span class="filter-chip active">Casinos (24)</span>
+                                    <span class="filter-chip active">Betting (22)</span>
+                                    <span class="filter-chip active">Adult (25)</span>
+                                </div>
+                            </div>
                             <button class="btn btn-full btn-blue" id="sim-block-start-btn">Start 30 min block</button>
                         </div>
 
@@ -194,7 +207,7 @@
                             <div class="stat-card">
                                 <div class="stat-header">
                                     <span class="stat-title">Today</span>
-                                    <span class="stat-badge text-emerald" id="today-stripped-badge">14 stripped</span>
+                                    <span class="stat-badge text-emerald" id="today-stripped-badge">16 stripped</span>
                                 </div>
                                 <p class="stat-desc">Successfully shielded you from short-form dopamine traps today.</p>
                             </div>
@@ -224,33 +237,101 @@
                             </div>
                         </div>
 
-                        <!-- Screen 5: Analytics Tab -->
-                        <div class="screen-view" id="view-analytics">
+                        <!-- Screen 5: Profile & Floral Streak Chart -->
+                        <div class="screen-view" id="view-profile">
                             <div class="sim-header">
-                                <h3>Today Analytics</h3>
+                                <h3>My Sovereignty</h3>
+                                <span class="badge badge-pulse">100% Local</span>
                             </div>
-                            <div class="big-metric-circle">
-                                <span class="big-metric-num" id="analytics-blocks-num">14</span>
-                                <span class="big-metric-lbl">Blocks landed</span>
+                            
+                            <!-- 7-Petal Floral Radial Achievement Chart -->
+                            <div class="floral-chart-card">
+                                <div class="floral-chart-header">
+                                    <span class="floral-chart-title">7-Day Floral Streak</span>
+                                    <span class="text-emerald" style="font-size: 11px; font-weight: 700;">100% Focused</span>
+                                </div>
+                                <div class="floral-svg-wrap">
+                                    <svg viewBox="0 0 200 200" class="floral-svg">
+                                        <defs>
+                                            <linearGradient id="petal-grad-achieved" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stop-color="#3B82F6"/>
+                                                <stop offset="100%" stop-color="#10B981"/>
+                                            </linearGradient>
+                                            <linearGradient id="petal-grad-partial" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stop-color="#6366F1"/>
+                                                <stop offset="100%" stop-color="#8B5CF6"/>
+                                            </linearGradient>
+                                        </defs>
+                                        <!-- Central Sun -->
+                                        <circle cx="100" cy="100" r="24" fill="#0C0F17" stroke="#1F2637" stroke-width="2"/>
+                                        <circle cx="100" cy="100" r="14" fill="#10B981" opacity="0.9"/>
+                                        <text x="100" y="104" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="bold">7d</text>
+                                        
+                                        <!-- 7 Petals for Mon - Sun -->
+                                        <!-- M (top) -->
+                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(0 100 100)"/>
+                                        <!-- T -->
+                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(51.4 100 100)"/>
+                                        <!-- W -->
+                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(102.8 100 100)"/>
+                                        <!-- T -->
+                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(154.2 100 100)"/>
+                                        <!-- F -->
+                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(205.7 100 100)"/>
+                                        <!-- S -->
+                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(257.1 100 100)"/>
+                                        <!-- S -->
+                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-partial)" opacity="0.95" transform="rotate(308.5 100 100)"/>
+                                    </svg>
+                                </div>
+                                <div class="floral-days-legend">
+                                    <span class="day-dot active">M</span>
+                                    <span class="day-dot active">T</span>
+                                    <span class="day-dot active">W</span>
+                                    <span class="day-dot active">T</span>
+                                    <span class="day-dot active">F</span>
+                                    <span class="day-dot active">S</span>
+                                    <span class="day-dot active current">S</span>
+                                </div>
                             </div>
-                            <div class="breakdown-list">
-                                <div class="breakdown-item">
-                                    <span>Reels/Shorts Trapped</span>
-                                    <strong id="analytics-shorts-trapped">14</strong>
+
+                            <!-- Hardware & System Toggles -->
+                            <div class="system-controls-list">
+                                <div class="sys-item">
+                                    <div class="sys-info">
+                                        <span class="sys-title">Hardware Daltonizer</span>
+                                        <span class="sys-desc">System Grayscale (Zero Color Traps)</span>
+                                    </div>
+                                    <label class="switch switch-sm">
+                                        <input type="checkbox" id="sim-grayscale-toggle" checked>
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
-                                <div class="breakdown-item">
-                                    <span>Shielded Social Apps</span>
-                                    <strong>6</strong>
+                                <div class="sys-item">
+                                    <div class="sys-info">
+                                        <span class="sys-title">Device Admin Shield</span>
+                                        <span class="sys-desc">Anti-tamper uninstall defense</span>
+                                    </div>
+                                    <span class="badge badge-emerald">ACTIVE</span>
                                 </div>
-                                <div class="breakdown-item">
-                                    <span>Time in Addictive Feeds</span>
-                                    <strong class="text-emerald">0m</strong>
+                            </div>
+
+                            <!-- Local AES-256 Backup & Data Sovereignty -->
+                            <div class="backup-card">
+                                <div class="backup-header">
+                                    <span class="backup-title">🔐 Encrypted Local Backup</span>
                                 </div>
+                                <p class="backup-desc">Export your configurations to an encrypted <code>.sbk</code> file locally. Never touches any server.</p>
+                                <div class="backup-actions">
+                                    <button class="btn btn-sm btn-secondary" id="sim-export-backup-btn">Export .sbk</button>
+                                    <button class="btn btn-sm btn-secondary" id="sim-import-backup-btn">Import .sbk</button>
+                                </div>
+                                <div id="backup-status-msg" class="backup-status"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Bottom Nav -->
+                    <!-- Bottom Nav (Exact 5 Tabs) -->
                     <div class="phone-nav-bar">
                         <button class="sim-nav-item active" data-tab="sleep">
                             <span class="sim-nav-icon">🌙</span>
@@ -268,9 +349,9 @@
                             <span class="sim-nav-icon">🌐</span>
                             <span class="sim-nav-text">WebApps</span>
                         </button>
-                        <button class="sim-nav-item" data-tab="analytics">
-                            <span class="sim-nav-icon">📊</span>
-                            <span class="sim-nav-text">Analytics</span>
+                        <button class="sim-nav-item" data-tab="profile">
+                            <span class="sim-nav-icon">👤</span>
+                            <span class="sim-nav-text">Profile</span>
                         </button>
                     </div>
                 </div>
@@ -388,7 +469,7 @@
                             <span class="step-num">02</span>
                             <div>
                                 <strong>Mental Clarity Puzzles</strong>
-                                <p>Solve 5 procedural arithmetic calculations to activate your prefrontal cortex.</p>
+                                <p>Solve 5 procedural arithmetic calculations ((A * B) - C = ?) to activate your prefrontal cortex.</p>
                             </div>
                         </div>
                         <div class="gauntlet-step-item">
@@ -504,7 +585,7 @@
                     <div class="apk-badge">RELEASE BUILD</div>
                     <h3 class="apk-title">SocialBreak v1.0.0 Debug</h3>
                     <div class="apk-meta">
-                        <span>Target: Android 8.0 - 15</span> • <span>Size: 17.6 MB</span> • <span>Architecture: ARM64-v8a</span>
+                        <span>Target: Android 8.0 - 15</span> • <span>Size: 22.6 MB</span> • <span>Architecture: ARM64-v8a</span>
                     </div>
                     <div class="apk-hash">
                         <code>Package: com.socialbreak.android</code>

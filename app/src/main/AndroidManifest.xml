@@ -230,6 +230,40 @@
                 android:resource="@xml/widget_info_platform" />
         </receiver>
 
+        <!-- Quick Settings Status Bar Tiles -->
+        <service
+            android:name=".services.FocusSprintTileService"
+            android:icon="@android:drawable/ic_lock_idle_lock"
+            android:label="Focus Sprint"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".services.SleepModeTileService"
+            android:icon="@android:drawable/ic_lock_idle_alarm"
+            android:label="Sleep Mode"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".services.HardModeTileService"
+            android:icon="@android:drawable/ic_secure"
+            android:label="Hard Mode"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>
