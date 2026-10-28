@@ -31,7 +31,10 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SleepModeScreen(prefs: PreferencesManager) {
+fun SleepModeScreen(
+    prefs: PreferencesManager,
+    onNavigateSettings: () -> Unit = {}
+) {
     val coroutineScope = rememberCoroutineScope()
     val isSleepMode by prefs.sleepModeEnabled.collectAsState(initial = false)
     val bedtimeHour by prefs.bedtimeHour.collectAsState(initial = 23)
@@ -64,12 +67,14 @@ fun SleepModeScreen(prefs: PreferencesManager) {
                 fontWeight = FontWeight.Bold,
                 color = TextHighlight
             )
-            Icon(
-                Icons.Default.Settings,
-                contentDescription = "Settings",
-                tint = TextSecondary,
-                modifier = Modifier.size(22.dp)
-            )
+            IconButton(onClick = onNavigateSettings) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))

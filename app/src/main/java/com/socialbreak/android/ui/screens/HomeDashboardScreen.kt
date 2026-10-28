@@ -31,7 +31,10 @@ import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeDashboardScreen(prefs: PreferencesManager) {
+fun HomeDashboardScreen(
+    prefs: PreferencesManager,
+    onNavigateAnalytics: () -> Unit = {}
+) {
     val coroutineScope = rememberCoroutineScope()
     val isHardMode by prefs.hardModeEnabled.collectAsState(initial = false)
     val strippedCount by prefs.todayStrippedCount.collectAsState(initial = 0)
@@ -251,6 +254,7 @@ fun HomeDashboardScreen(prefs: PreferencesManager) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable { onNavigateAnalytics() }
                 .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
             colors = CardDefaults.cardColors(containerColor = BgSecondary),
             shape = RoundedCornerShape(20.dp)

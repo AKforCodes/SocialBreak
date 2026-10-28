@@ -26,7 +26,10 @@ class PreferencesManager(private val context: Context) {
         val KEY_WEB_BLOCKING_ADULT = booleanPreferencesKey("web_blocking_adult")
         val KEY_WEB_BLOCKING_CASINOS = booleanPreferencesKey("web_blocking_casinos")
         val KEY_WEB_BLOCKING_GAMING = booleanPreferencesKey("web_blocking_gaming")
+        val KEY_WEB_BLOCKING_BETTING = booleanPreferencesKey("web_blocking_betting")
         val KEY_WEB_BLOCKING_SOCIAL = booleanPreferencesKey("web_blocking_social")
+        val KEY_REACHABLE_SOCIAL_CHIPS = stringSetPreferencesKey("reachable_social_chips")
+        val KEY_SERVICE_HEALTH_WARNING = booleanPreferencesKey("service_health_warning")
 
         val KEY_TODAY_BLOCKS_LANDED = intPreferencesKey("today_blocks_landed")
         val KEY_TODAY_STRIPPED_COUNT = intPreferencesKey("today_stripped_count")
@@ -122,7 +125,10 @@ class PreferencesManager(private val context: Context) {
     val webBlockingAdult: Flow<Boolean> = context.dataStore.data.map { it[KEY_WEB_BLOCKING_ADULT] ?: false }
     val webBlockingCasinos: Flow<Boolean> = context.dataStore.data.map { it[KEY_WEB_BLOCKING_CASINOS] ?: false }
     val webBlockingGaming: Flow<Boolean> = context.dataStore.data.map { it[KEY_WEB_BLOCKING_GAMING] ?: false }
+    val webBlockingBetting: Flow<Boolean> = context.dataStore.data.map { it[KEY_WEB_BLOCKING_BETTING] ?: false }
     val webBlockingSocial: Flow<Boolean> = context.dataStore.data.map { it[KEY_WEB_BLOCKING_SOCIAL] ?: false }
+    val reachableSocialChips: Flow<Set<String>> = context.dataStore.data.map { it[KEY_REACHABLE_SOCIAL_CHIPS] ?: emptySet() }
+    val serviceHealthWarning: Flow<Boolean> = context.dataStore.data.map { it[KEY_SERVICE_HEALTH_WARNING] ?: false }
 
     val todayBlocksLanded: Flow<Int> = context.dataStore.data.map { it[KEY_TODAY_BLOCKS_LANDED] ?: 0 }
     val todayStrippedCount: Flow<Int> = context.dataStore.data.map { it[KEY_TODAY_STRIPPED_COUNT] ?: 0 }
@@ -169,9 +175,22 @@ class PreferencesManager(private val context: Context) {
                 "adult" -> it[KEY_WEB_BLOCKING_ADULT] = enabled
                 "casinos" -> it[KEY_WEB_BLOCKING_CASINOS] = enabled
                 "gaming" -> it[KEY_WEB_BLOCKING_GAMING] = enabled
+                "betting" -> it[KEY_WEB_BLOCKING_BETTING] = enabled
                 "social" -> it[KEY_WEB_BLOCKING_SOCIAL] = enabled
             }
         }
+    }
+
+    suspend fun toggleReachableChip(chipId: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[KEY_REACHABLE_SOCIAL_CHIPS]?.toMutableSet() ?: mutableSetOf()
+            if (current.contains(chipId)) current.remove(chipId) else current.add(chipId)
+            prefs[KEY_REACHABLE_SOCIAL_CHIPS] = current
+        }
+    }
+
+    suspend fun setServiceHealthWarning(warning: Boolean) {
+        context.dataStore.edit { it[KEY_SERVICE_HEALTH_WARNING] = warning }
     }
 
     suspend fun incrementBlocksLanded() {

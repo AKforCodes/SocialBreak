@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,7 +40,10 @@ import kotlinx.coroutines.launch
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun WebAppsScreen(prefs: PreferencesManager) {
+fun WebAppsScreen(
+    prefs: PreferencesManager,
+    onNavigateWebBlocking: () -> Unit = {}
+) {
     val coroutineScope = rememberCoroutineScope()
     var activeUrl by remember { mutableStateOf<String?>(null) }
     var selectedApp by remember { mutableStateOf("instagram") } // "instagram" or "youtube"
@@ -333,6 +337,72 @@ fun WebAppsScreen(prefs: PreferencesManager) {
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // More controls (Screenshots 8, 10)
+            Text(
+                text = "More controls",
+                style = MaterialTheme.typography.labelMedium,
+                color = TextMuted,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateWebBlocking() },
+                shape = RoundedCornerShape(16.dp),
+                color = BgSecondary,
+                border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(AccentBlue.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = AccentBlue,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Web Blocking",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextHighlight
+                            )
+                            Text(
+                                text = "Block sites system-wide",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = TextMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

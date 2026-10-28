@@ -73,6 +73,9 @@ dependencies {
     // WebView for In-App Clean WebApps
     implementation("androidx.webkit:webkit:1.12.1")
 
+    // WorkManager for background health watchdog
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

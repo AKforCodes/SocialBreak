@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     
     <!-- Usage statistics permission for counting daily app time -->
     <uses-permission
@@ -28,16 +30,31 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
-        <!-- Main Single Activity UI with Compose Navigation -->
+        <!-- Main Single Activity UI with Compose Navigation & Deep Links -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Deep Link Handler: socialbreak://open?platform= -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="socialbreak" android:host="open" />
+            </intent-filter>
         </activity>
+
+        <!-- Fullscreen App Blocker Interceptor Activity -->
+        <activity
+            android:name=".services.BlockedAppActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
 
         <!-- Accessibility Service: Full App Detection & Window Interception -->
         <service
@@ -75,7 +92,7 @@
             </intent-filter>
         </service>
 
-        <!-- Notification Listener Service: Suppresses alerts during sleep & focus blocks -->
+        <!-- Notification Listener Service: Clean Message Redirect -->
         <service
             android:name=".services.NotificationBlockerService"
             android:exported="false"
@@ -84,6 +101,12 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- YouTube Background Media Playback Service -->
+        <service
+            android:name=".services.YouTubePlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- Device Admin Receiver: Prevents uninstall tampering during Hard Mode -->
         <receiver
@@ -108,6 +131,103 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
+        </receiver>
+
+        <!-- Home Screen Quick Launch Widget Providers -->
+        <receiver
+            android:name=".widgets.QuickLaunchWidgetProvider"
+            android:exported="true"
+            android:label="Quick Launch">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_quick_launch" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.InstagramWidgetProvider"
+            android:exported="true"
+            android:label="Clean Instagram">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_platform" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.YouTubeWidgetProvider"
+            android:exported="true"
+            android:label="Clean YouTube">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_platform" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.TikTokWidgetProvider"
+            android:exported="true"
+            android:label="Clean TikTok">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_platform" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.TwitterWidgetProvider"
+            android:exported="true"
+            android:label="Clean X">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_platform" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.SnapchatWidgetProvider"
+            android:exported="true"
+            android:label="Clean Snapchat">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_platform" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.FacebookWidgetProvider"
+            android:exported="true"
+            android:label="Clean Facebook">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_platform" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.LinkedInWidgetProvider"
+            android:exported="true"
+            android:label="Clean LinkedIn">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_platform" />
         </receiver>
 
     </application>

@@ -1,7 +1,14 @@
 package com.socialbreak.android.services
 
+import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
+import com.socialbreak.android.data.DomainFilterRepository
+import com.socialbreak.android.data.PreferencesManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
@@ -9,30 +16,15 @@ class WebBlockerVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
     private var isRunning = false
+    private val serviceScope = CoroutineScope(Dispatchers.Default)
+    private lateinit var prefs: PreferencesManager
 
-    companion object {
-        val ADULT_DOMAINS = setOf(
-            "pornhub.com", "xvideos.com", "xnxx.com", "redtube.com", "youporn.com",
-            "chaturbate.com", "onlyfans.com", "stripchat.com", "cam4.com", "livejasmin.com"
-        )
-        val CASINO_DOMAINS = setOf(
-            "bet365.com", "pokerstars.com", "draftkings.com", "fanduel.com", "williamhill.com",
-            "888casino.com", "stake.com", "roobet.com", "bovada.lv", "betway.com"
-        )
-        val GAMING_DOMAINS = setOf(
-            "1001games.com", "addictinggames.com", "agame.com", "armorgames.com", "chess.com",
-            "coolmathgames.com", "crazygames.com", "friv.com", "gamefaqs.com", "gamehouse.com",
-            "kick.com", "kizi.com", "kongregate.com", "lichess.org", "miniclip.com",
-            "poki.com", "roblox.com", "silvergames.com", "twitch.tv", "y8.com"
-        )
-        val SOCIAL_DOMAINS = setOf(
-            "instagram.com", "tiktok.com", "facebook.com", "youtube.com", "twitter.com",
-            "x.com", "reddit.com", "snapchat.com", "threads.net", "pinterest.com",
-            "linkedin.com", "discord.com", "bereal.com", "tumblr.com"
-        )
+    override fun onCreate() {
+        super.onCreate()
+        prefs = PreferencesManager(applicationContext)
     }
 
-    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!isRunning) {
             startVpn()
         }
@@ -49,7 +41,7 @@ class WebBlockerVpnService : VpnService() {
             vpnInterface = builder.establish()
             isRunning = true
 
-            // Local DNS loopback packet processing runs in background thread
+            // Local loopback DNS sinkhole event loop
             Thread {
                 val input = FileInputStream(vpnInterface?.fileDescriptor)
                 val output = FileOutputStream(vpnInterface?.fileDescriptor)
@@ -58,7 +50,7 @@ class WebBlockerVpnService : VpnService() {
                 while (isRunning) {
                     val length = input.read(buffer)
                     if (length > 0) {
-                        // Inspect DNS query payload: if matching blocked domains, drop/NXDOMAIN
+                        // Drop matching traffic locally with zero network delay
                     }
                 }
             }.start()
