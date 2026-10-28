@@ -100,238 +100,465 @@
                     </div>
 
                     <!-- Simulator Screen Canvas -->
-                    <div class="phone-screen" id="phone-screen">
-                        <!-- Screen 1: Sleep Mode -->
+                    <div class="phone-screen" id="pho                        <!-- Screen 1: Sleep Mode (Screenshots 1, 24, 25, 26, 27, 28) -->
                         <div class="screen-view active" id="view-sleep">
-                            <div class="sim-header">
-                                <h3>Sleep Mode</h3>
-                                <button class="icon-btn">⚙</button>
+                            <div class="sb-screen-header">
+                                <span class="sb-screen-title">Sleep Mode</span>
+                                <button class="sb-icon-btn">⚙</button>
                             </div>
 
-                            <div class="dial-container">
-                                <div class="dial-track" id="dial-track">
-                                    <svg class="dial-svg" viewBox="0 0 200 200">
-                                        <circle cx="100" cy="100" r="80" class="dial-bg-circle" />
-                                        <path d="M 100 20 A 80 80 0 0 1 180 100" class="dial-active-arc" id="dial-arc" />
+                            <!-- 24h Circular Dial with Inner Plate and 24h Clock Markers -->
+                            <div class="sb-dial-container">
+                                <div class="sb-dial-wrapper">
+                                    <svg class="sb-dial-svg" viewBox="0 0 240 240">
+                                        <!-- Outer dark background circle -->
+                                        <circle cx="120" cy="120" r="100" fill="none" stroke="#0B0E17" stroke-width="26" />
+                                        <!-- Inner dark plate -->
+                                        <circle cx="120" cy="120" r="87" fill="#111624" />
+                                        <!-- Active arc from 23:00 to 07:00 (approx 120deg) -->
+                                        <path d="M 103 21 A 100 100 0 0 1 216 146" fill="none" stroke="#E2E8F0" stroke-width="26" stroke-linecap="round" />
+                                        <!-- Bedtime Knob (Moon) at 23:00 -->
+                                        <circle cx="103" cy="21" r="14" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2" />
+                                        <!-- Wakeup Knob (Sun) at 07:00 -->
+                                        <circle cx="216" cy="146" r="14" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2" />
+                                        <!-- 24-hour Numerals -->
+                                        <text x="120" y="32" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">0</text>
+                                        <text x="165" y="44" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">2</text>
+                                        <text x="200" y="80" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">4</text>
+                                        <text x="210" y="124" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">6</text>
+                                        <text x="198" y="166" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">8</text>
+                                        <text x="165" y="202" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">10</text>
+                                        <text x="120" y="214" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">12</text>
+                                        <text x="75" y="202" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">14</text>
+                                        <text x="42" y="166" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">16</text>
+                                        <text x="30" y="124" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">18</text>
+                                        <text x="42" y="80" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">20</text>
+                                        <text x="75" y="44" text-anchor="middle" fill="#64748B" font-size="10" font-weight="600">22</text>
                                     </svg>
-                                    <div class="dial-center">
-                                        <span class="dial-hours" id="dial-duration-text">8h</span>
-                                        <span class="dial-sub">Scheduled Sleep</span>
+                                    <div class="sb-dial-center-label">
+                                        <span class="sb-dial-center-hours">8h</span>
                                     </div>
                                 </div>
-                                <p class="sim-hint">Drag dial to adjust bedtime</p>
                             </div>
 
-                            <div class="time-cards-row">
-                                <div class="time-card">
-                                    <span class="time-card-val" id="bedtime-val">11:00 pm</span>
-                                    <span class="time-card-lbl">Bedtime</span>
+                            <!-- Direct Canvas Bedtime & Wakeup Layout (Page 1) -->
+                            <div class="sb-bedtime-row">
+                                <div class="sb-time-col">
+                                    <div class="sb-time-icon">🌙</div>
+                                    <span class="sb-time-val">11:00 pm</span>
+                                    <span class="sb-time-lbl">Bedtime</span>
                                 </div>
-                                <div class="time-card">
-                                    <span class="time-card-val" id="wakeup-val">7:00 am</span>
-                                    <span class="time-card-lbl">Wake Up</span>
+                                <div class="sb-time-col">
+                                    <div class="sb-time-icon">☀️</div>
+                                    <span class="sb-time-val">7:00 am</span>
+                                    <span class="sb-time-lbl">Wake Up</span>
                                 </div>
                             </div>
 
-                            <div class="pill-row">
-                                <div class="sim-pill">Wind down: <strong>30 min</strong></div>
-                                <div class="sim-pill">Allowed: <strong class="text-emerald">None</strong></div>
+                            <!-- Schedule & Warning Cards (Page 1) -->
+                            <div class="sb-card-row">
+                                <div class="sb-card-left">
+                                    <span class="sb-icon-muted">🗓️</span>
+                                    <span class="sb-card-text">Repeat every day</span>
+                                </div>
+                                <span class="sb-card-chevron">Every day &gt;</span>
                             </div>
 
-                            <button class="btn btn-full btn-purple" id="sim-sleep-toggle">
-                                <span id="sleep-toggle-label">Turn on Sleep Mode →</span>
+                            <div class="sb-card-row">
+                                <span class="sb-card-text">Finish protection setup</span>
+                                <span class="sb-link-fix">Fix</span>
+                            </div>
+
+                            <div class="sb-dual-card-row">
+                                <div class="sb-dual-card">
+                                    <div class="sb-dual-card-hdr">
+                                        <span class="sb-icon-muted">⊝</span>
+                                        <span class="sb-dual-title">Wind down</span>
+                                    </div>
+                                    <span class="sb-dual-val">30 min</span>
+                                </div>
+                                <div class="sb-dual-card">
+                                    <div class="sb-dual-card-hdr">
+                                        <span class="sb-icon-emerald">✓</span>
+                                        <span class="sb-dual-title">Allowed</span>
+                                    </div>
+                                    <span class="sb-dual-val">None</span>
+                                </div>
+                            </div>
+
+                            <!-- Signature Lavender/Purple Pill (Page 1) -->
+                            <button class="sb-pill-btn sb-lavender-btn" id="sim-sleep-toggle">
+                                <span>Turn on Sleep Mode &rarr;</span>
                             </button>
                         </div>
 
-                        <!-- Screen 2: Full App Blocking -->
+                        <!-- Screen 2: Full App Blocking (Screenshots 3, 4, 29, 30) -->
                         <div class="screen-view" id="view-blocking">
-                            <div class="sim-header">
-                                <h3>Full App Blocking</h3>
-                                <button class="icon-btn">ℹ</button>
-                            </div>
-                            <div class="category-tiles">
-                                <div class="cat-tile active">
-                                    <span class="cat-name">Social</span>
-                                    <span class="cat-stat">6 active</span>
-                                </div>
-                                <div class="cat-tile">
-                                    <span class="cat-name">Other apps</span>
-                                    <span class="cat-stat text-muted">0 apps</span>
+                            <div class="sb-screen-header">
+                                <span class="sb-screen-title">Full App Blocking</span>
+                                <div class="sb-hdr-actions">
+                                    <button class="sb-icon-btn">ℹ</button>
+                                    <button class="sb-icon-btn">⚙</button>
                                 </div>
                             </div>
-                            <div class="timer-display" id="block-timer-display">30:00</div>
-                            <div class="stepper-row">
-                                <button class="step-btn" id="step-minus">-</button>
-                                <span class="step-val" id="step-val-text">30 min</span>
-                                <button class="step-btn" id="step-plus">+</button>
-                            </div>
-                            <div class="focus-preset-chips">
-                                <span class="preset-chip active" data-time="25">25m sprint</span>
-                                <span class="preset-chip" data-time="60">1h study</span>
-                                <span class="preset-chip" data-time="120">2h deep work</span>
-                            </div>
-                            <div class="web-presets-accordion">
-                                <div class="web-presets-header">
-                                    <span class="web-presets-title">🛡️ On-Device Web Filter (TUN Sinkhole)</span>
-                                    <span class="badge badge-emerald">108 Domains</span>
+
+                            <!-- Two Top Cards: Social & Other apps (Page 29) -->
+                            <div class="sb-dual-card-row">
+                                <div class="sb-top-grid-card">
+                                    <div class="sb-grid-icon">
+                                        <div class="sb-dot"></div><div class="sb-dot"></div>
+                                        <div class="sb-dot"></div><div class="sb-dot"></div>
+                                    </div>
+                                    <span class="sb-top-card-name">Social</span>
+                                    <span class="sb-top-card-sub">0 of 7 on</span>
                                 </div>
-                                <div class="filter-chips-grid">
-                                    <span class="filter-chip active">Social (16)</span>
-                                    <span class="filter-chip active">Casual Gaming (21)</span>
-                                    <span class="filter-chip active">Casinos (24)</span>
-                                    <span class="filter-chip active">Betting (22)</span>
-                                    <span class="filter-chip active">Adult (25)</span>
+                                <div class="sb-top-grid-card">
+                                    <div class="sb-grid-icon">
+                                        <div class="sb-dot"></div><div class="sb-dot"></div>
+                                        <div class="sb-dot"></div><div class="sb-dot"></div>
+                                    </div>
+                                    <span class="sb-top-card-name">Other apps</span>
+                                    <span class="sb-top-card-sub">0 apps</span>
                                 </div>
                             </div>
-                            <button class="btn btn-full btn-blue" id="sim-block-start-btn">Start 30 min block</button>
+
+                            <!-- Giant 68px Timer Typography (Page 29) -->
+                            <div class="sb-giant-timer">30:00</div>
+
+                            <!-- Stepper Row [ ∞ | - | 30 min | + ] (Page 29) -->
+                            <div class="sb-stepper-track">
+                                <button class="sb-step-item">&infin;</button>
+                                <button class="sb-step-item sb-step-math" id="step-minus">&minus;</button>
+                                <span class="sb-step-item sb-step-center" id="step-val-text">30 min</span>
+                                <button class="sb-step-item sb-step-math" id="step-plus">&plus;</button>
+                            </div>
+
+                            <div class="sb-swipe-sessions-row">
+                                <span class="sb-swipe-text">swipe for sessions</span>
+                                <div class="sb-pager-dots">
+                                    <span class="sb-pager-dot active"></span>
+                                    <span class="sb-pager-dot"></span>
+                                </div>
+                            </div>
+
+                            <!-- Focus Sessions (Screenshot 4) -->
+                            <div class="sb-sessions-list">
+                                <div class="sb-session-card bg-desk">
+                                    <span class="sb-sess-bold">25 min</span>
+                                    <span class="sb-sess-light">focus sprint</span>
+                                </div>
+                                <div class="sb-session-card bg-library">
+                                    <span class="sb-sess-bold">1 hr</span>
+                                    <span class="sb-sess-light">study session</span>
+                                </div>
+                                <div class="sb-session-card bg-room">
+                                    <span class="sb-sess-bold">2 hr</span>
+                                    <span class="sb-sess-light">deep work</span>
+                                </div>
+                            </div>
+
+                            <!-- Dark Start Block Button (Page 29) -->
+                            <button class="sb-pill-btn sb-dark-btn" id="sim-block-start-btn">
+                                <span class="sb-lock-glyph">🔒</span>
+                                <span>Start 30 min block</span>
+                            </button>
                         </div>
 
-                        <!-- Screen 3: Home Dashboard -->
+                        <!-- Screen 3: Home Dashboard (Screenshots 5, 6, 7) -->
                         <div class="screen-view" id="view-home">
-                            <div class="sim-header">
-                                <h3>SocialBreak</h3>
-                                <button class="pill-tag-btn" id="open-gauntlet-btn">🔒 Hard Mode</button>
+                            <div class="sb-screen-header">
+                                <span class="sb-brand-wordmark">SocialBreak</span>
+                                <button class="sb-customize-btn">
+                                    <span class="sb-slider-icon">&#9881;</span>
+                                    <span>Customize apps</span>
+                                </button>
                             </div>
-                            <div class="node-graph-card">
-                                <div class="node-cluster">
-                                    <div class="center-hub">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5">
-                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                        </svg>
-                                    </div>
-                                    <div class="app-node node-yt">YT<span class="node-sub">0:00</span></div>
-                                    <div class="app-node node-ig">IG<span class="node-sub">0:00</span></div>
-                                    <div class="app-node node-tt">TT<span class="node-sub">0:00</span></div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">Today</span>
-                                    <span class="stat-badge text-emerald" id="today-stripped-badge">16 stripped</span>
-                                </div>
-                                <p class="stat-desc">Successfully shielded you from short-form dopamine traps today.</p>
-                            </div>
-                        </div>
 
-                        <!-- Screen 4: WebApps Tab -->
-                        <div class="screen-view" id="view-webapps">
-                            <div class="sim-header">
-                                <h3>Inside SocialBreak</h3>
-                            </div>
-                            <p class="sim-desc">Distraction-free web clients with Reels, Shorts, and ads stripped.</p>
-                            <div class="webapp-cards">
-                                <div class="webapp-card ig-gradient">
-                                    <h4>Instagram Clean</h4>
-                                    <div class="webapp-badges">
-                                        <span>✓ Reels Blocked</span>
-                                        <span>✓ DMs Active</span>
+                            <!-- Warning Banner (Page 5) -->
+                            <div class="sb-protection-banner">
+                                <div class="sb-prot-info">
+                                    <span class="sb-prot-title">Finish protection setup</span>
+                                    <div class="sb-prot-sub">
+                                        <span>🔒</span>
+                                        <span>Protection alerts</span>
                                     </div>
                                 </div>
-                                <div class="webapp-card yt-gradient">
-                                    <h4>YouTube Clean</h4>
-                                    <div class="webapp-badges">
-                                        <span>✓ Shorts Blocked</span>
-                                        <span>✓ Audio in BG</span>
-                                    </div>
-                                </div>
+                                <span class="sb-link-fix">Fix</span>
                             </div>
-                        </div>
 
-                        <!-- Screen 5: Profile & Floral Streak Chart -->
-                        <div class="screen-view" id="view-profile">
-                            <div class="sim-header">
-                                <h3>My Sovereignty</h3>
-                                <span class="badge badge-pulse">100% Local</span>
-                            </div>
-                            
-                            <!-- 7-Petal Floral Radial Achievement Chart -->
-                            <div class="floral-chart-card">
-                                <div class="floral-chart-header">
-                                    <span class="floral-chart-title">7-Day Floral Streak</span>
-                                    <span class="text-emerald" style="font-size: 11px; font-weight: 700;">100% Focused</span>
-                                </div>
-                                <div class="floral-svg-wrap">
-                                    <svg viewBox="0 0 200 200" class="floral-svg">
-                                        <defs>
-                                            <linearGradient id="petal-grad-achieved" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stop-color="#3B82F6"/>
-                                                <stop offset="100%" stop-color="#10B981"/>
-                                            </linearGradient>
-                                            <linearGradient id="petal-grad-partial" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stop-color="#6366F1"/>
-                                                <stop offset="100%" stop-color="#8B5CF6"/>
-                                            </linearGradient>
-                                        </defs>
-                                        <!-- Central Sun -->
-                                        <circle cx="100" cy="100" r="24" fill="#0C0F17" stroke="#1F2637" stroke-width="2"/>
-                                        <circle cx="100" cy="100" r="14" fill="#10B981" opacity="0.9"/>
-                                        <text x="100" y="104" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="bold">7d</text>
-                                        
-                                        <!-- 7 Petals for Mon - Sun -->
-                                        <!-- M (top) -->
-                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(0 100 100)"/>
-                                        <!-- T -->
-                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(51.4 100 100)"/>
-                                        <!-- W -->
-                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(102.8 100 100)"/>
-                                        <!-- T -->
-                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(154.2 100 100)"/>
-                                        <!-- F -->
-                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(205.7 100 100)"/>
-                                        <!-- S -->
-                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-achieved)" opacity="0.92" transform="rotate(257.1 100 100)"/>
-                                        <!-- S -->
-                                        <ellipse cx="100" cy="50" rx="14" ry="28" fill="url(#petal-grad-partial)" opacity="0.95" transform="rotate(308.5 100 100)"/>
+                            <!-- Open Radial Node Graph on Pure Obsidian Canvas (Page 5) -->
+                            <div class="sb-open-graph-area">
+                                <svg class="sb-graph-lines" viewBox="0 0 280 200">
+                                    <!-- Radial connecting spokes -->
+                                    <line x1="140" y1="100" x2="140" y2="35" stroke="#1E2538" stroke-width="2.5" />
+                                    <line x1="140" y1="100" x2="60" y2="155" stroke="#1E2538" stroke-width="2.5" />
+                                    <line x1="140" y1="100" x2="220" y2="155" stroke="#1E2538" stroke-width="2.5" />
+                                </svg>
+
+                                <!-- Center Logo Hub -->
+                                <div class="sb-hub-center">
+                                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.8">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                     </svg>
                                 </div>
-                                <div class="floral-days-legend">
-                                    <span class="day-dot active">M</span>
-                                    <span class="day-dot active">T</span>
-                                    <span class="day-dot active">W</span>
-                                    <span class="day-dot active">T</span>
-                                    <span class="day-dot active">F</span>
-                                    <span class="day-dot active">S</span>
-                                    <span class="day-dot active current">S</span>
+
+                                <!-- Radial Node: YouTube (Top) -->
+                                <div class="sb-graph-node sb-node-yt">
+                                    <div class="sb-node-icon bg-yt">
+                                        <span class="sb-gear-badge">⚙</span>
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                    <span class="sb-node-timer">0:00</span>
+                                </div>
+
+                                <!-- Radial Node: Instagram (Bottom-Left) -->
+                                <div class="sb-graph-node sb-node-ig">
+                                    <div class="sb-node-icon bg-ig">
+                                        <span class="sb-gear-badge">⚙</span>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                                    </div>
+                                    <span class="sb-node-timer">0:00</span>
+                                </div>
+
+                                <!-- Radial Node: TikTok (Bottom-Right) -->
+                                <div class="sb-graph-node sb-node-tt">
+                                    <div class="sb-node-icon bg-tt">
+                                        <span class="sb-gear-badge">⚙</span>
+                                        <span class="sb-tt-glyph">&#9835;</span>
+                                    </div>
+                                    <span class="sb-node-timer">0:00</span>
                                 </div>
                             </div>
 
-                            <!-- Hardware & System Toggles -->
-                            <div class="system-controls-list">
-                                <div class="sys-item">
-                                    <div class="sys-info">
-                                        <span class="sys-title">Hardware Daltonizer</span>
-                                        <span class="sys-desc">System Grayscale (Zero Color Traps)</span>
+                            <!-- Bottom Floating Dock with Secondary Apps & Signature Orange Hard Mode Button (Page 5, 7) -->
+                            <div class="sb-floating-dock">
+                                <div class="sb-dock-apps-row">
+                                    <div class="sb-dock-app">
+                                        <div class="sb-dock-icon bg-sc"><span class="sb-gear-badge">⚙</span>👻</div>
+                                        <span class="sb-dock-label">No limit</span>
                                     </div>
-                                    <label class="switch switch-sm">
-                                        <input type="checkbox" id="sim-grayscale-toggle" checked>
-                                        <span class="slider"></span>
-                                    </label>
+                                    <div class="sb-dock-app">
+                                        <div class="sb-dock-icon bg-fb"><span class="sb-gear-badge">⚙</span>f</div>
+                                        <span class="sb-dock-label">No limit</span>
+                                    </div>
+                                    <div class="sb-dock-app">
+                                        <div class="sb-dock-icon bg-x"><span class="sb-gear-badge">⚙</span>𝕏</div>
+                                        <span class="sb-dock-label">No limit</span>
+                                    </div>
                                 </div>
-                                <div class="sys-item">
-                                    <div class="sys-info">
-                                        <span class="sys-title">Device Admin Shield</span>
-                                        <span class="sys-desc">Anti-tamper uninstall defense</span>
+
+                                <!-- Signature Orange Hard Mode Button (Page 5, 7) -->
+                                <button class="sb-pill-btn sb-orange-btn" id="open-gauntlet-btn">
+                                    <span class="sb-lock-glyph">🔒</span>
+                                    <span>Hard</span>
+                                </button>
+                            </div>
+
+                            <!-- Today Card (Page 7) -->
+                            <div class="sb-today-card">
+                                <div class="sb-today-hdr">
+                                    <span class="sb-today-title">Today</span>
+                                    <span class="sb-today-date">Tue, Oct 27</span>
+                                </div>
+                                <p class="sb-today-desc">Nothing stripped yet today. This fills in as the blocker catches reels and shorts.</p>
+                            </div>
+                        </div>
+
+                        <!-- Screen 4: Inside SocialBreak / WebApps (Screenshots 8, 9, 10, 11, 12) -->
+                        <div class="screen-view" id="view-webapps">
+                            <div class="sb-screen-header">
+                                <span class="sb-screen-title">Inside SocialBreak</span>
+                                <button class="sb-icon-btn">⚙</button>
+                            </div>
+
+                            <!-- Green Add to Home Screen Banner (Page 8) -->
+                            <div class="sb-green-banner">
+                                <span class="sb-green-arrow">&#8599;</span>
+                                <span class="sb-green-text">Add to Home Screen</span>
+                                <span class="sb-card-chevron">&rarr;</span>
+                            </div>
+
+                            <!-- App Selectors (Instagram & YouTube) (Page 8, 10) -->
+                            <div class="sb-app-selectors-row">
+                                <div class="sb-app-sel-item active">
+                                    <div class="sb-app-big-icon bg-ig">
+                                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
                                     </div>
-                                    <span class="badge badge-emerald">ACTIVE</span>
+                                    <span class="sb-app-sel-name">Instagram</span>
+                                    <div class="sb-active-underline"></div>
+                                </div>
+                                <div class="sb-app-sel-item">
+                                    <div class="sb-app-big-icon bg-dark-yt">
+                                        <svg width="34" height="34" viewBox="0 0 24 24" fill="#64748B"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                    <span class="sb-app-sel-name text-muted">YouTube</span>
+                                </div>
+                            </div>
+                            <span class="sb-tap-hint">Tap the selected logo to open.</span>
+
+                            <!-- Instagram Settings Drawer (Page 11) -->
+                            <div class="sb-settings-drawer">
+                                <div class="sb-drawer-header">
+                                    <span class="sb-drawer-icon">&#9776;</span>
+                                    <span class="sb-drawer-title">Instagram settings</span>
+                                    <span class="sb-drawer-chevron">&#9662;</span>
+                                </div>
+                                <div class="sb-drawer-body">
+                                    <div class="sb-sub-notice">
+                                        <span>🌐</span>
+                                        <span>These settings only affect apps inside SocialBreak.</span>
+                                    </div>
+                                    <div class="sb-toggle-row">
+                                        <span class="sb-toggle-label">🔒 Block Reels</span>
+                                        <span class="sb-badge-green">✔ Always On</span>
+                                    </div>
+                                    <div class="sb-toggle-row">
+                                        <span class="sb-toggle-label">🔒 Block Explore</span>
+                                        <span class="sb-badge-green">✔ Always On</span>
+                                    </div>
+                                    <div class="sb-toggle-row">
+                                        <span class="sb-toggle-label">Block Stories</span>
+                                        <label class="sb-switch"><input type="checkbox"><span class="sb-slider"></span></label>
+                                    </div>
+                                    <div class="sb-toggle-row">
+                                        <span class="sb-toggle-label">Block Saved Posts</span>
+                                        <label class="sb-switch"><input type="checkbox"><span class="sb-slider"></span></label>
+                                    </div>
+                                    <div class="sb-toggle-row">
+                                        <span class="sb-toggle-label">Block Feed</span>
+                                        <label class="sb-switch"><input type="checkbox"><span class="sb-slider"></span></label>
+                                    </div>
+                                    <div class="sb-toggle-row">
+                                        <span class="sb-toggle-label">DMs Only</span>
+                                        <label class="sb-switch"><input type="checkbox"><span class="sb-slider"></span></label>
+                                    </div>
+                                    <div class="sb-toggle-row">
+                                        <span class="sb-toggle-label">Grayscale</span>
+                                        <label class="sb-switch"><input type="checkbox"><span class="sb-slider"></span></label>
+                                    </div>
+                                    <div class="sb-drawer-link">
+                                        <span>👥 Manage Accounts</span>
+                                        <span>&gt;</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Local AES-256 Backup & Data Sovereignty -->
-                            <div class="backup-card">
-                                <div class="backup-header">
-                                    <span class="backup-title">🔐 Encrypted Local Backup</span>
+                            <!-- Two Gradient Action Tiles (Page 8, 10) -->
+                            <div class="sb-gradient-tiles-row">
+                                <div class="sb-grad-tile bg-coral-purple">
+                                    <div class="sb-grad-check">✔</div>
+                                    <div class="sb-grad-icon">⊘</div>
+                                    <span class="sb-grad-label">Block Ads</span>
                                 </div>
-                                <p class="backup-desc">Export your configurations to an encrypted <code>.sbk</code> file locally. Never touches any server.</p>
-                                <div class="backup-actions">
-                                    <button class="btn btn-sm btn-secondary" id="sim-export-backup-btn">Export .sbk</button>
-                                    <button class="btn btn-sm btn-secondary" id="sim-import-backup-btn">Import .sbk</button>
+                                <div class="sb-grad-tile bg-purple-pink">
+                                    <div class="sb-grad-check">✔</div>
+                                    <div class="sb-grad-icon">&#10022;</div>
+                                    <span class="sb-grad-label">Block Suggested Posts</span>
                                 </div>
-                                <div id="backup-status-msg" class="backup-status"></div>
+                            </div>
+
+                            <!-- Web Blocking Card (Page 10) -->
+                            <div class="sb-web-blocking-card">
+                                <div class="sb-wb-info">
+                                    <span class="sb-wb-icon">🌐</span>
+                                    <div class="sb-wb-texts">
+                                        <span class="sb-wb-title">Web Blocking</span>
+                                        <span class="sb-wb-desc">Block sites system-wide</span>
+                                    </div>
+                                </div>
+                                <span class="sb-card-chevron">&gt;</span>
+                            </div>
+                        </div>
+
+                        <!-- Screen 5: Profile Screen (Screenshots 20, 21, 22) -->
+                        <div class="screen-view" id="view-profile">
+                            <div class="sb-screen-header">
+                                <span class="sb-screen-title">This week</span>
+                            </div>
+
+                            <!-- Exact 7-Petal Horizontal Split Card (Page 20) -->
+                            <div class="sb-split-week-card">
+                                <div class="sb-week-left">
+                                    <svg viewBox="0 0 140 140" class="sb-floral-svg">
+                                        <!-- Central circle counter -->
+                                        <circle cx="70" cy="70" r="18" fill="#161B29" stroke="#1E2538" stroke-width="1.5"/>
+                                        <text x="70" y="74" text-anchor="middle" fill="#FFFFFF" font-size="12" font-weight="bold">0</text>
+                                        <!-- 7 Petals around circle with S M T W T F S -->
+                                        <circle cx="70" cy="30" r="10" fill="#161B29" stroke="#1E2538" stroke-width="1"/>
+                                        <text x="70" y="34" text-anchor="middle" fill="#64748B" font-size="9" font-weight="600">M</text>
+                                        <circle cx="100" cy="42" r="10" fill="#161B29" stroke="#1E2538" stroke-width="1"/>
+                                        <text x="100" y="46" text-anchor="middle" fill="#64748B" font-size="9" font-weight="600">T</text>
+                                        <circle cx="108" cy="75" r="10" fill="#161B29" stroke="#1E2538" stroke-width="1"/>
+                                        <text x="108" y="79" text-anchor="middle" fill="#64748B" font-size="9" font-weight="600">W</text>
+                                        <circle cx="92" cy="104" r="10" fill="#161B29" stroke="#1E2538" stroke-width="1"/>
+                                        <text x="92" y="108" text-anchor="middle" fill="#64748B" font-size="9" font-weight="600">T</text>
+                                        <circle cx="48" cy="104" r="10" fill="#161B29" stroke="#1E2538" stroke-width="1"/>
+                                        <text x="48" y="108" text-anchor="middle" fill="#64748B" font-size="9" font-weight="600">F</text>
+                                        <circle cx="32" cy="75" r="10" fill="#161B29" stroke="#1E2538" stroke-width="1"/>
+                                        <text x="32" y="79" text-anchor="middle" fill="#64748B" font-size="9" font-weight="600">S</text>
+                                        <circle cx="40" cy="42" r="10" fill="#161B29" stroke="#1E2538" stroke-width="1"/>
+                                        <text x="40" y="46" text-anchor="middle" fill="#64748B" font-size="9" font-weight="600">S</text>
+                                    </svg>
+                                </div>
+                                <div class="sb-week-right">
+                                    <span class="sb-week-count">0 days within your limit</span>
+                                    <span class="sb-week-sub">First full goal day starts tomorrow</span>
+                                </div>
+                            </div>
+
+                            <!-- Purple Pro Gift Box Card (Page 20) -->
+                            <div class="sb-pro-gift-card">
+                                <div class="sb-gift-text">
+                                    <span class="sb-gift-title">Give your friends</span>
+                                    <span class="sb-gift-sub">a week of SocialBreak Pro</span>
+                                </div>
+                                <div class="sb-gift-icon">🎁</div>
+                            </div>
+
+                            <!-- Settings Menu Group (Page 20) -->
+                            <div class="sb-menu-card">
+                                <div class="sb-menu-item">
+                                    <span class="sb-menu-icon text-emerald">🔒</span>
+                                    <div class="sb-menu-info">
+                                        <span class="sb-menu-title">Stop SocialBreak being deleted</span>
+                                        <span class="sb-menu-sub">Off &middot; anyone can delete the app</span>
+                                    </div>
+                                    <span class="sb-card-chevron">&gt;</span>
+                                </div>
+                                <div class="sb-menu-item">
+                                    <span class="sb-menu-icon text-blue">❓</span>
+                                    <div class="sb-menu-info">
+                                        <span class="sb-menu-title">Help</span>
+                                        <span class="sb-menu-sub">FAQ, feedback and support</span>
+                                    </div>
+                                    <span class="sb-card-chevron">&gt;</span>
+                                </div>
+                                <div class="sb-menu-item">
+                                    <span class="sb-menu-icon text-amber">👤</span>
+                                    <div class="sb-menu-info">
+                                        <span class="sb-menu-title">Account</span>
+                                        <span class="sb-menu-sub">Browsing data, log out, delete</span>
+                                    </div>
+                                    <span class="sb-card-chevron">&gt;</span>
+                                </div>
+                                <div class="sb-menu-item">
+                                    <span class="sb-menu-icon text-muted">ℹ</span>
+                                    <div class="sb-menu-info">
+                                        <span class="sb-menu-title">About</span>
+                                        <span class="sb-menu-sub">Version, privacy, terms</span>
+                                    </div>
+                                    <span class="sb-card-chevron">&gt;</span>
+                                </div>
+                            </div>
+
+                            <!-- Centered Reset Goals Link (Page 20) -->
+                            <div class="sb-reset-goals">
+                                <span>&#8635; Reset goals</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Bottom Nav (Exact 5 Tabs) -->
+                    <!-- Bottom Nav (Exact 5 Tabs: Sleep, Blocking, Home, WebApps, Profile) -->
                     <div class="phone-nav-bar">
                         <button class="sim-nav-item active" data-tab="sleep">
                             <span class="sim-nav-icon">🌙</span>
@@ -346,7 +573,7 @@
                             <span class="sim-nav-text">Home</span>
                         </button>
                         <button class="sim-nav-item" data-tab="webapps">
-                            <span class="sim-nav-icon">🌐</span>
+                            <span class="sim-nav-icon">&#128179;</span>
                             <span class="sim-nav-text">WebApps</span>
                         </button>
                         <button class="sim-nav-item" data-tab="profile">

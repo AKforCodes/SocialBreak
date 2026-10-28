@@ -193,6 +193,98 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[KEY_SERVICE_HEALTH_WARNING] = warning }
     }
 
+    suspend fun setBlockedPackages(packages: Set<String>) {
+        context.dataStore.edit { it[KEY_BLOCKED_PACKAGES] = packages }
+    }
+
+    suspend fun setWindDownMinutes(minutes: Int) {
+        context.dataStore.edit { it[KEY_WIND_DOWN_MINUTES] = minutes }
+    }
+
+    suspend fun setNavStyle(style: String) {
+        context.dataStore.edit { it[KEY_NAV_STYLE] = style }
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        context.dataStore.edit { it[KEY_THEME_MODE] = mode }
+    }
+
+    suspend fun setIconTheme(theme: String) {
+        context.dataStore.edit { it[KEY_ICON_THEME] = theme }
+    }
+
+    suspend fun setGlobalGrayscale(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_GLOBAL_GRAYSCALE] = enabled }
+    }
+
+    suspend fun setSystemGrayscale(enabled: Boolean) {
+        setGlobalGrayscale(enabled)
+    }
+
+    suspend fun setIgBlockAds(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_IG_BLOCK_ADS] = enabled }
+    }
+
+    suspend fun setIgBlockSuggested(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_IG_BLOCK_SUGGESTED] = enabled }
+    }
+
+    suspend fun setIgBlockStories(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_IG_BLOCK_STORIES] = enabled }
+    }
+
+    suspend fun setIgBlockSaved(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_IG_BLOCK_SAVED] = enabled }
+    }
+
+    suspend fun setIgBlockFeed(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_IG_BLOCK_FEED] = enabled }
+    }
+
+    suspend fun setIgDmsOnly(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_IG_DMS_ONLY] = enabled }
+    }
+
+    suspend fun setIgGrayscale(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_IG_GRAYSCALE] = enabled }
+    }
+
+    suspend fun setYtBlockShorts(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_BLOCK_SHORTS] = enabled }
+    }
+
+    suspend fun setYtAllowChannelShorts(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_ALLOW_CHANNEL_SHORTS] = enabled }
+    }
+
+    suspend fun setYtStopAutoplay(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_STOP_AUTOPLAY] = enabled }
+    }
+
+    suspend fun setYtSearchOnly(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_SEARCH_ONLY] = enabled }
+    }
+
+    suspend fun setYtHideRecommendations(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_HIDE_RECOMMENDATIONS] = enabled }
+    }
+
+    suspend fun setYtHideComments(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_HIDE_COMMENTS] = enabled }
+    }
+
+    suspend fun setYtBlockAds(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_BLOCK_ADS] = enabled }
+    }
+
+    suspend fun setYtCaptionsFullscreen(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_CAPTIONS_FULLSCREEN] = enabled }
+    }
+
+    suspend fun setYtGrayscale(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_GRAYSCALE] = enabled }
+    }
+
     suspend fun incrementBlocksLanded() {
         context.dataStore.edit {
             val count = it[KEY_TODAY_BLOCKS_LANDED] ?: 0

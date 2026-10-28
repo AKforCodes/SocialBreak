@@ -1,268 +1,284 @@
 package com.socialbreak.android.ui.screens
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.socialbreak.android.data.GrayscaleController
 import com.socialbreak.android.data.PreferencesManager
-import com.socialbreak.android.receivers.UninstallProtectionReceiver
-import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.launch
 
-val SOCIAL_SITES = listOf(
-    "Instagram", "TikTok", "Facebook", "YouTube", "Snapchat", "Twitter",
-    "X", "Reddit", "Threads", "Pinterest", "LinkedIn", "Discord",
-    "Messenger", "BeReal", "VSCO", "Tumblr"
-)
-
-val GAMING_SITES = listOf(
-    "1001games.com", "addictinggames.com", "agame.com", "armorgames.com", "chess.com",
-    "coolmathgames.com", "crazygames.com", "friv.com", "gamefaqs.com", "gamehouse.com",
-    "kick.com", "kizi.com", "kongregate.com", "lichess.org", "miniclip.com",
-    "poki.com", "roblox.com", "silvergames.com", "twitch.tv", "y8.com"
-)
-
 @Composable
-fun SettingsScreen(prefs: PreferencesManager) {
+fun SettingsScreen(
+    prefs: PreferencesManager,
+    onBack: () -> Unit = {}
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val webAdult by prefs.webBlockingAdult.collectAsState(initial = false)
-    val webCasinos by prefs.webBlockingCasinos.collectAsState(initial = false)
-    val webGaming by prefs.webBlockingGaming.collectAsState(initial = false)
-    val webSocial by prefs.webBlockingSocial.collectAsState(initial = false)
-
     val navStyle by prefs.navStyle.collectAsState(initial = "Bar")
-    val themeMode by prefs.themeMode.collectAsState(initial = "Dark")
+    val themeMode by prefs.themeMode.collectAsState(initial = "System")
     val iconTheme by prefs.iconTheme.collectAsState(initial = "Painted")
     val grayscale by prefs.globalGrayscale.collectAsState(initial = false)
 
-    var socialSitesExpanded by remember { mutableStateOf(false) }
-    var gamingSitesExpanded by remember { mutableStateOf(false) }
-    var appearanceExpanded by remember { mutableStateOf(false) }
-
-    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    val adminComponent = ComponentName(context, UninstallProtectionReceiver::class.java)
-    var isAdminActive by remember { mutableStateOf(dpm.isAdminActive(adminComponent)) }
+    var appearanceExpanded by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgPrimary)
+            .background(Color(0xFF000000))
+            .padding(horizontal = 20.dp, vertical = 16.dp)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp)
     ) {
-        // "This Week" 7-Petal Flower Goal Tracker (Screenshot 20, 21, 22)
-        Card(
+        // Top Header (Screenshot 2: <- Settings)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp)),
-            colors = CardDefaults.cardColors(containerColor = BgSecondary),
-            shape = RoundedCornerShape(24.dp)
+                .padding(top = 8.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(text = "This week", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 7-Petal Ring
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(BgTertiary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val days = listOf("S", "M", "T", "W", "T", "F", "S")
-                            val center = Offset(size.width / 2, size.height / 2)
-                            days.forEachIndexed { index, _ ->
-                                val angle = Math.toRadians((index * (360.0 / 7.0)) - 90.0)
-                                val x = center.x + (size.width * 0.32f * Math.cos(angle)).toFloat()
-                                val y = center.y + (size.height * 0.32f * Math.sin(angle)).toFloat()
-                                drawCircle(color = BorderSubtle, radius = 9.dp.toPx(), center = Offset(x, y))
-                            }
-                        }
-                        Text(text = "0", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextHighlight)
-                    }
-
-                    Spacer(modifier = Modifier.width(18.dp))
-                    Column {
-                        Text(text = "0 days within your limit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Text(text = "First full goal day starts tomorrow", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                    }
-                }
+            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
             }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Settings",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Give your friends SocialBreak Pro Banner (Screenshot 20)
+        // Group 1: Appearance Card (Screenshot 2)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = BgSecondary),
-            shape = RoundedCornerShape(20.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(18.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Give your friends", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                    Text(text = "a week of SocialBreak Pro", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-                }
-                Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = AccentPurple, modifier = Modifier.size(28.dp))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Device Admin Anti-Uninstall Protection (Screenshots 20, 22)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = BgSecondary),
-            shape = RoundedCornerShape(20.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(18.dp)
-                    .fillMaxWidth()
-                    .clickable {
-                        if (!isAdminActive) {
-                            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-                                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "SocialBreak uses device administrator privileges solely to prevent uninstallation during Hard Mode.")
-                            }
-                            context.startActivity(intent)
-                        } else {
-                            dpm.removeActiveAdmin(adminComponent)
-                            isAdminActive = false
-                        }
-                    },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = if (isAdminActive) AccentEmerald else TextSecondary, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(text = "Stop SocialBreak being deleted", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Text(
-                            text = if (isAdminActive) "Protected - admin enabled" else "Off - anyone can delete the app",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isAdminActive) AccentEmerald else TextMuted
-                        )
-                    }
-                }
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Appearance & Theme Accordion (Screenshot 2)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = BgSecondary),
+                .clip(RoundedCornerShape(20.dp))
+                .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(20.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF111522)),
             shape = RoundedCornerShape(20.dp)
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
+                // Appearance Header Row
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable { appearanceExpanded = !appearanceExpanded },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { appearanceExpanded = !appearanceExpanded },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Palette, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(text = "Appearance & Theme", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
+                        Icon(
+                            imageVector = Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color(0xFFA78BFA),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Appearance",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     }
-                    Icon(if (appearanceExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = TextSecondary)
+                    Icon(
+                        if (appearanceExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = Color(0xFF64748B),
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
 
                 AnimatedVisibility(visible = appearanceExpanded) {
-                    Column(modifier = Modifier.padding(top = 16.dp)) {
-                        Text(text = "Navigation", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            listOf("Bubble", "Bar").forEach { style ->
-                                FilterChip(
-                                    selected = navStyle == style,
-                                    onClick = { coroutineScope.launch { prefs.setAppearance(nav = style) } },
-                                    label = { Text(style) }
-                                )
+                    Column(modifier = Modifier.padding(top = 20.dp)) {
+                        // 1. Navigation (Screenshot 2)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Text(text = "Navigation", fontSize = 13.sp, color = Color.White)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF334155)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "i", fontSize = 9.sp, color = Color.White)
+                            }
+                        }
+                        // Segmented Control: [ Bubble | Bar ]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(0.55f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(9999.dp))
+                                .background(Color(0xFF181F30))
+                                .border(1.dp, Color(0xFF242E44), RoundedCornerShape(9999.dp))
+                                .padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            SegmentedButton(
+                                text = "Bubble",
+                                isSelected = navStyle == "Bubble",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setNavStyle("Bubble") }
+                            }
+                            SegmentedButton(
+                                text = "Bar",
+                                isSelected = navStyle == "Bar",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setNavStyle("Bar") }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(text = "Theme", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 2. Theme (Screenshot 2)
+                        Text(text = "Theme", fontSize = 13.sp, color = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            listOf("Light", "Dark", "System").forEach { mode ->
-                                FilterChip(
-                                    selected = themeMode == mode,
-                                    onClick = { coroutineScope.launch { prefs.setAppearance(theme = mode) } },
-                                    label = { Text(mode) }
-                                )
+                        // Segmented Control: [ Light | Dark | System ]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(0.75f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(9999.dp))
+                                .background(Color(0xFF181F30))
+                                .border(1.dp, Color(0xFF242E44), RoundedCornerShape(9999.dp))
+                                .padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            SegmentedButton(
+                                text = "Light",
+                                isSelected = themeMode == "Light",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setThemeMode("Light") }
+                            }
+                            SegmentedButton(
+                                text = "Dark",
+                                isSelected = themeMode == "Dark",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setThemeMode("Dark") }
+                            }
+                            SegmentedButton(
+                                text = "System",
+                                isSelected = themeMode == "System",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setThemeMode("System") }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 3. Grayscale (Screenshot 2)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = "Grayscale", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = "Grayscale", fontSize = 14.sp, color = Color.White)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF334155)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = "i", fontSize = 9.sp, color = Color.White)
+                                }
+                            }
+
                             Switch(
                                 checked = grayscale,
-                                onCheckedChange = { coroutineScope.launch { prefs.setAppearance(grayscale = it) } },
-                                colors = SwitchDefaults.colors(checkedThumbColor = AccentBlue, checkedTrackColor = BgTertiary)
+                                onCheckedChange = {
+                                    coroutineScope.launch {
+                                        prefs.setGlobalGrayscale(it)
+                                        GrayscaleController.setHardwareGrayscale(context, it)
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF3B82F6),
+                                    uncheckedThumbColor = Color(0xFF94A3B8),
+                                    uncheckedTrackColor = Color(0xFF1E2538)
+                                )
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(text = "Icon Theme", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 4. Icon Theme (Screenshot 2)
+                        Text(text = "Icon Theme", fontSize = 13.sp, color = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            listOf("Classic", "Modern", "Painted").forEach { iconT ->
-                                FilterChip(
-                                    selected = iconTheme == iconT,
-                                    onClick = { coroutineScope.launch { prefs.setAppearance(icon = iconT) } },
-                                    label = { Text(iconT) }
-                                )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(9999.dp))
+                                .background(Color(0xFF181F30))
+                                .border(1.dp, Color(0xFF242E44), RoundedCornerShape(9999.dp))
+                                .padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            SegmentedButton(
+                                text = "Classic",
+                                isSelected = iconTheme == "Classic",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setIconTheme("Classic") }
+                            }
+                            SegmentedButton(
+                                text = "Modern",
+                                isSelected = iconTheme == "Modern",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setIconTheme("Modern") }
+                            }
+                            SegmentedButton(
+                                text = "Painted",
+                                isSelected = iconTheme == "Painted",
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                coroutineScope.launch { prefs.setIconTheme("Painted") }
                             }
                         }
                     }
@@ -270,176 +286,119 @@ fun SettingsScreen(prefs: PreferencesManager) {
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // System-Wide Web Blocking (Screenshots 15, 16, 17)
-        Text(text = "Web Blocking Presets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-        Spacer(modifier = Modifier.height(12.dp))
-
+        // Group 2: App Launch Card (Screenshot 2)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = BgSecondary),
-            shape = RoundedCornerShape(20.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(18.dp))
+                .clickable { /* app launch sub-settings */ },
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF111522)),
+            shape = RoundedCornerShape(18.dp)
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                // Social Apps Pack (16 sites) - Expandable (Screenshot 16)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f).clickable { socialSitesExpanded = !socialSitesExpanded }) {
-                        Text(text = "Social apps", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextHighlight)
-                        Text(text = "16 sites ${if (socialSitesExpanded) "▲" else "▼"}", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                    }
-                    Switch(
-                        checked = webSocial,
-                        onCheckedChange = { coroutineScope.launch { prefs.setWebFilter("social", it) } },
-                        colors = SwitchDefaults.colors(checkedThumbColor = AccentBlue, checkedTrackColor = BgTertiary)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Bolt,
+                        contentDescription = null,
+                        tint = Color(0xFFF59E0B),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = "App Launch",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
                     )
                 }
-
-                AnimatedVisibility(visible = socialSitesExpanded) {
-                    Column(modifier = Modifier.padding(top = 14.dp)) {
-                        Text(text = "Keep these reachable", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Text(text = "Chips OFF = blocked. Chips ON = still works.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                        Spacer(modifier = Modifier.height(10.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(SOCIAL_SITES) { site ->
-                                SuggestionChip(
-                                    onClick = { /* toggle exception */ },
-                                    label = { Text(site, style = MaterialTheme.typography.labelSmall) },
-                                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = BgTertiary)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 12.dp))
-
-                // Casual Gaming Portals Pack (21 sites) - Expandable (Screenshot 17)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f).clickable { gamingSitesExpanded = !gamingSitesExpanded }) {
-                        Text(text = "Casual gaming portals", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextHighlight)
-                        Text(text = "21 sites ${if (gamingSitesExpanded) "▲" else "▼"}", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                    }
-                    Switch(
-                        checked = webGaming,
-                        onCheckedChange = { coroutineScope.launch { prefs.setWebFilter("gaming", it) } },
-                        colors = SwitchDefaults.colors(checkedThumbColor = AccentBlue, checkedTrackColor = BgTertiary)
-                    )
-                }
-
-                AnimatedVisibility(visible = gamingSitesExpanded) {
-                    Column(modifier = Modifier.padding(top = 14.dp)) {
-                        Text(text = "Sites in this pack", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Spacer(modifier = Modifier.height(10.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(GAMING_SITES) { site ->
-                                SuggestionChip(
-                                    onClick = { },
-                                    label = { Text(site, style = MaterialTheme.typography.labelSmall) },
-                                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = BgTertiary)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 12.dp))
-
-                WebBlockRow(
-                    title = "Adult content",
-                    subtitle = "25 sites",
-                    checked = webAdult,
-                    onCheckedChange = { coroutineScope.launch { prefs.setWebFilter("adult", it) } }
-                )
-
-                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 12.dp))
-
-                WebBlockRow(
-                    title = "Online casinos",
-                    subtitle = "24 sites",
-                    checked = webCasinos,
-                    onCheckedChange = { coroutineScope.launch { prefs.setWebFilter("casinos", it) } }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = Color(0xFF64748B),
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Menu Items (Help, Account, About) (Screenshot 20)
+        // Group 3: Notifications Card (Screenshot 2)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = BgSecondary),
-            shape = RoundedCornerShape(20.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(18.dp))
+                .clickable { /* notifications sub-settings */ },
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF111522)),
+            shape = RoundedCornerShape(18.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                MenuItemRow("Help", "FAQ, feedback and support")
-                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 8.dp))
-                MenuItemRow("Account", "Browsing data, log out, delete")
-                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 8.dp))
-                MenuItemRow("About", "Version 1.0.0, privacy, terms")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Notifications,
+                        contentDescription = null,
+                        tint = Color(0xFF60A5FA),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = "Notifications",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = Color(0xFF64748B),
+                    modifier = Modifier.size(18.dp)
+                )
             }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Reset goals text button (Screenshot 20)
-        TextButton(
-            onClick = { /* reset */ },
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            Text("Reset goals", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
 
 @Composable
-fun MenuItemRow(title: String, subtitle: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(text = title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-            Text(text = subtitle, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-        }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
-    }
-}
-
-@Composable
-fun WebBlockRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+fun SegmentedButton(
+    text: String,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(9999.dp))
+            .background(if (isSelected) Color(0xFF26334D) else Color.Transparent)
+            .border(
+                1.dp,
+                if (isSelected) Color(0xFF3B82F6) else Color.Transparent,
+                RoundedCornerShape(9999.dp)
+            )
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextHighlight)
-            Text(text = subtitle, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = AccentBlue, checkedTrackColor = BgTertiary)
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) Color.White else Color(0xFF94A3B8)
         )
     }
 }
-

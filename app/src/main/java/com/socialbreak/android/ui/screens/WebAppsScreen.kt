@@ -17,11 +17,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,7 +50,7 @@ fun WebAppsScreen(
     val coroutineScope = rememberCoroutineScope()
     var activeUrl by remember { mutableStateOf<String?>(null) }
     var selectedApp by remember { mutableStateOf("instagram") } // "instagram" or "youtube"
-    var instagramExpanded by remember { mutableStateOf(false) }
+    var instagramExpanded by remember { mutableStateOf(true) }
     var youtubeExpanded by remember { mutableStateOf(false) }
 
     // Instagram prefs
@@ -72,23 +75,24 @@ fun WebAppsScreen(
     val ytGrayscale by prefs.ytGrayscale.collectAsState(initial = false)
 
     if (activeUrl != null) {
-        // Active Clean WebView
-        Column(modifier = Modifier.fillMaxSize().background(BgPrimary)) {
+        // Active Clean In-App Web Client
+        Column(modifier = Modifier.fillMaxSize().background(Color(0xFF000000))) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(BgSecondary)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .background(Color(0xFF111522))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { activeUrl = null }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextHighlight)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = if (activeUrl!!.contains("instagram")) "Clean Instagram" else "Clean YouTube",
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextHighlight
+                    color = Color.White
                 )
             }
             AndroidView(
@@ -120,115 +124,197 @@ fun WebAppsScreen(
             )
         }
     } else {
-        // Main Inside SocialBreak Screen (Screenshots 8, 9, 10, 11, 12, 14)
+        // Main Screen (1:1 with Screenshots 8, 9, 10, 11, 12, 14)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BgPrimary)
+                .background(Color(0xFF000000))
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
-            // Header
+            // Header (Screenshot 8: Inside SocialBreak + Gear)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Inside SocialBreak",
-                    style = MaterialTheme.typography.headlineMedium,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextHighlight
+                    color = Color.White
                 )
+                IconButton(
+                    onClick = { /* settings */ },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = Color(0xFF94A3B8),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Add to Home Screen Banner (Screenshot 8, 10)
+            // Add to Home Screen Banner (Screenshot 8, 10: green icon + arrow)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(BgSecondary)
-                    .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .background(Color(0xFF111522))
+                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Add to Home Screen", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF064E3B)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.PhoneAndroid,
+                            contentDescription = null,
+                            tint = Color(0xFF34D399),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Add to Home Screen",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Color(0xFF94A3B8),
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Large App Selectors (Instagram & YouTube) (Screenshot 8, 10)
+            // Large App Selectors (Instagram & YouTube) (Screenshot 8 & 10)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Instagram Box
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(120.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            if (selectedApp == "instagram") Brush.linearGradient(listOf(Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCB045)))
-                            else Brush.linearGradient(listOf(BgSecondary, BgSecondary))
-                        )
-                        .border(1.dp, if (selectedApp == "instagram") AccentBlue else BorderSubtle, RoundedCornerShape(24.dp))
-                        .clickable {
-                            selectedApp = "instagram"
-                            activeUrl = "https://www.instagram.com"
-                        },
-                    contentAlignment = Alignment.Center
+                // Instagram Big Card
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "IG", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Text(text = "Instagram", style = MaterialTheme.typography.labelSmall, color = TextHighlight)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(115.dp)
+                            .clip(RoundedCornerShape(26.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        Color(0xFF833AB4),
+                                        Color(0xFFFD1D1D),
+                                        Color(0xFFFCB045)
+                                    )
+                                )
+                            )
+                            .clickable {
+                                selectedApp = "instagram"
+                                activeUrl = "https://www.instagram.com"
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "📸", fontSize = 44.sp)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Instagram",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (selectedApp == "instagram") {
+                        Box(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color.White)
+                        )
                     }
                 }
 
-                // YouTube Box
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(120.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            if (selectedApp == "youtube") Brush.linearGradient(listOf(Color(0xFFFF0000), Color(0xFFCC0000)))
-                            else Brush.linearGradient(listOf(BgSecondary, BgSecondary))
-                        )
-                        .border(1.dp, if (selectedApp == "youtube") AccentCoral else BorderSubtle, RoundedCornerShape(24.dp))
-                        .clickable {
-                            selectedApp = "youtube"
-                            activeUrl = "https://m.youtube.com"
-                        },
-                    contentAlignment = Alignment.Center
+                // YouTube Big Card
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "YT", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Text(text = "YouTube", style = MaterialTheme.typography.labelSmall, color = TextHighlight)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(115.dp)
+                            .clip(RoundedCornerShape(26.dp))
+                            .background(Color(0xFF262C3A))
+                            .border(1.dp, Color(0xFF333D52), RoundedCornerShape(26.dp))
+                            .clickable {
+                                selectedApp = "youtube"
+                                activeUrl = "https://m.youtube.com"
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "▶", fontSize = 38.sp, color = Color(0xFFEF4444))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "YouTube",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF94A3B8)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (selectedApp == "youtube") {
+                        Box(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color.White)
+                        )
                     }
                 }
             }
 
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Tap the selected logo to open.",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 10.dp, bottom = 20.dp).align(Alignment.CenterHorizontally)
+                fontSize = 12.sp,
+                color = Color(0xFF64748B),
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 20.dp)
             )
 
-            // Instagram Settings Accordion (Screenshots 8, 10, 11)
+            // Instagram Settings Accordion (Screenshot 8, 10, 11)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-                colors = CardDefaults.cardColors(containerColor = BgSecondary),
+                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(20.dp)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF111522)),
                 shape = RoundedCornerShape(20.dp)
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -236,73 +322,172 @@ fun WebAppsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Instagram settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Icon(if (instagramExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = TextSecondary)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Tune,
+                                contentDescription = null,
+                                tint = Color(0xFF94A3B8),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Instagram settings",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Icon(
+                            if (instagramExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            tint = Color(0xFF94A3B8)
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Block Ads & Block Suggested Posts Gradient Cards (Screenshot 8, 10)
+                    // Two Gradient Cards (Screenshot 8 & 10: Block Ads & Block Suggested Posts)
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        // Card 1: Block Ads (Coral to Purple)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(80.dp)
+                                .height(95.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Brush.linearGradient(listOf(Color(0xFF833AB4), Color(0xFFE1306C))))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(Color(0xFFE11D48), Color(0xFF9333EA))
+                                    )
+                                )
+                                .clickable {
+                                    coroutineScope.launch { prefs.setIgBlockAds(!igBlockAds) }
+                                }
                                 .padding(12.dp)
                         ) {
-                            Column(modifier = Modifier.align(Alignment.BottomStart)) {
-                                Text(text = "Block Ads", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextHighlight)
+                            if (igBlockAds) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White)
+                                        .align(Alignment.TopEnd),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(12.dp))
+                                }
                             }
-                            Icon(Icons.Default.Check, contentDescription = null, tint = TextHighlight, modifier = Modifier.align(Alignment.TopEnd).size(18.dp))
+                            Column(modifier = Modifier.align(Alignment.BottomStart)) {
+                                Text(text = "⃠", fontSize = 16.sp, color = Color.White)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(text = "Block Ads", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
 
+                        // Card 2: Block Suggested Posts (Purple to Orange)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(80.dp)
+                                .height(95.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Brush.linearGradient(listOf(Color(0xFFE1306C), Color(0xFFFD1D1D))))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(Color(0xFF7C3AED), Color(0xFFEA580C))
+                                    )
+                                )
+                                .clickable {
+                                    coroutineScope.launch { prefs.setIgBlockSuggested(!igBlockSuggested) }
+                                }
                                 .padding(12.dp)
                         ) {
-                            Column(modifier = Modifier.align(Alignment.BottomStart)) {
-                                Text(text = "Block Suggested", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextHighlight)
+                            if (igBlockSuggested) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White)
+                                        .align(Alignment.TopEnd),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(12.dp))
+                                }
                             }
-                            Icon(Icons.Default.Check, contentDescription = null, tint = TextHighlight, modifier = Modifier.align(Alignment.TopEnd).size(18.dp))
+                            Column(modifier = Modifier.align(Alignment.BottomStart)) {
+                                Icon(Icons.Outlined.VisibilityOff, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(text = "Block Suggested Posts", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
                     }
 
+                    // Expandable Toggle Rows (Screenshot 11)
                     AnimatedVisibility(visible = instagramExpanded) {
                         Column(modifier = Modifier.padding(top = 16.dp)) {
-                            Text(text = "These settings only affect apps inside SocialBreak.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            // Sub-notice bubble
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF181F30))
+                                    .padding(12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.Language, contentDescription = null, tint = Color(0xFF60A5FA), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "These settings only affect apps inside SocialBreak.",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFFCBD5E1)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Locked Rows: Block Reels & Block Explore (Always On)
+                            LockedAlwaysOnRow("Block Reels")
+                            LockedAlwaysOnRow("Block Explore")
+
+                            // Toggles
+                            SettingsToggleRow("Block Stories", igBlockStories) { coroutineScope.launch { prefs.setIgBlockStories(it) } }
+                            SettingsToggleRow("Block Saved Posts", igBlockSaved) { coroutineScope.launch { prefs.setIgBlockSaved(it) } }
+                            SettingsToggleRow("Block Feed", igBlockFeed) { coroutineScope.launch { prefs.setIgBlockFeed(it) } }
+                            SettingsToggleRow("DMs Only", igDmsOnly) { coroutineScope.launch { prefs.setIgDmsOnly(it) } }
+                            SettingsToggleRow("Grayscale", igGrayscale) { coroutineScope.launch { prefs.setIgGrayscale(it) } }
+
                             Spacer(modifier = Modifier.height(12.dp))
-                            AlwaysOnRow("Block Reels")
-                            AlwaysOnRow("Block Explore")
-                            ToggleRow("Block Stories", igBlockStories) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_IG_BLOCK_STORIES, it) } }
-                            ToggleRow("Block Saved Posts", igBlockSaved) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_IG_BLOCK_SAVED, it) } }
-                            ToggleRow("Block Feed", igBlockFeed) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_IG_BLOCK_FEED, it) } }
-                            ToggleRow("DMs Only", igDmsOnly) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_IG_DMS_ONLY, it) } }
-                            ToggleRow("Grayscale", igGrayscale) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_IG_GRAYSCALE, it) } }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { /* manage accounts */ }
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.Person, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(text = "Manage Accounts", fontSize = 14.sp, color = Color.White)
+                                }
+                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // YouTube Settings Accordion (Screenshots 9, 12, 14)
+            // YouTube Settings Accordion (Screenshot 9, 12, 14)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-                colors = CardDefaults.cardColors(containerColor = BgSecondary),
+                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(20.dp)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF111522)),
                 shape = RoundedCornerShape(20.dp)
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -310,96 +495,121 @@ fun WebAppsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "YouTube settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextHighlight)
-                        Icon(if (youtubeExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = TextSecondary)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Tune, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(text = "YouTube settings", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                        Icon(if (youtubeExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = Color(0xFF94A3B8))
                     }
 
                     AnimatedVisibility(visible = youtubeExpanded) {
                         Column(modifier = Modifier.padding(top = 16.dp)) {
-                            Text(text = "Content", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AccentBlue)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            ToggleRow("Block Shorts", ytBlockShorts) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_BLOCK_SHORTS, it) } }
-                            ToggleRow("Allow Shorts on channel pages", ytAllowChannelShorts) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_ALLOW_CHANNEL_SHORTS, it) } }
-                            Text(text = "Watch a Short you choose on a channel. Swiping to another returns you to the channel.", style = MaterialTheme.typography.labelSmall, color = TextMuted, modifier = Modifier.padding(bottom = 8.dp))
-                            ToggleRow("Stop feed autoplay", ytStopAutoplay) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_STOP_AUTOPLAY, it) } }
-                            ToggleRow("Search Only Mode", ytSearchOnly) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_SEARCH_ONLY, it) } }
-                            ToggleRow("Hide recommendations below videos", ytHideRecommendations) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_HIDE_RECOMMENDATIONS, it) } }
-                            ToggleRow("Hide comments", ytHideComments) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_HIDE_COMMENTS, it) } }
-                            ToggleRow("Block ads", ytBlockAds) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_BLOCK_ADS, it) } }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF181F30))
+                                    .padding(12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.Language, contentDescription = null, tint = Color(0xFF60A5FA), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = "These settings only affect apps inside SocialBreak.", fontSize = 12.sp, color = Color(0xFFCBD5E1))
+                                }
+                            }
 
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Text(text = "Playback", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AccentBlue)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(text = "Content", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             Spacer(modifier = Modifier.height(8.dp))
-                            ToggleRow("Captions in fullscreen", ytCaptionsFullscreen) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_CAPTIONS_FULLSCREEN, it) } }
-                            ToggleRow("When leaving YouTube: Keep audio playing", ytKeepAudioPlaying) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_KEEP_AUDIO_PLAYING, it) } }
-                            ToggleRow("Grayscale", ytGrayscale) { coroutineScope.launch { prefs.setPlatformToggle(PreferencesManager.KEY_YT_GRAYSCALE, it) } }
+
+                            SettingsToggleRow("Block Shorts", ytBlockShorts) { coroutineScope.launch { prefs.setYtBlockShorts(it) } }
+                            SettingsToggleRow(
+                                title = "Allow Shorts on channel pages",
+                                checked = ytAllowChannelShorts,
+                                subtitle = "Watch a Short you choose on a channel. Swiping to another returns you to the channel."
+                            ) { coroutineScope.launch { prefs.setYtAllowChannelShorts(it) } }
+                            SettingsToggleRow("Stop feed autoplay", ytStopAutoplay) { coroutineScope.launch { prefs.setYtStopAutoplay(it) } }
+                            SettingsToggleRow("Search Only Mode", ytSearchOnly) { coroutineScope.launch { prefs.setYtSearchOnly(it) } }
+                            SettingsToggleRow("Hide recommendations below videos", ytHideRecommendations) { coroutineScope.launch { prefs.setYtHideRecommendations(it) } }
+                            SettingsToggleRow("Hide comments", ytHideComments) { coroutineScope.launch { prefs.setYtHideComments(it) } }
+                            SettingsToggleRow("Block ads", ytBlockAds) { coroutineScope.launch { prefs.setYtBlockAds(it) } }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(text = "Playback", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            SettingsToggleRow("Captions in fullscreen", ytCaptionsFullscreen) { coroutineScope.launch { prefs.setYtCaptionsFullscreen(it) } }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "When leaving YouTube", fontSize = 14.sp, color = Color.White)
+                                Text(text = "Keep audio playing", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF3B82F6))
+                            }
+
+                            SettingsToggleRow("Grayscale", ytGrayscale) { coroutineScope.launch { prefs.setYtGrayscale(it) } }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { /* manage accounts */ }
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.Person, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(text = "Manage Accounts", fontSize = 14.sp, color = Color.White)
+                                }
+                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // More controls (Screenshots 8, 10)
-            Text(
-                text = "More controls",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextMuted,
-                fontWeight = FontWeight.Medium
-            )
-
+            // More controls Section (Screenshot 8 & 10)
+            Text(text = "More controls", fontSize = 12.sp, color = Color(0xFF64748B))
             Spacer(modifier = Modifier.height(10.dp))
 
-            Surface(
+            // Web Blocking Card (Screenshot 10)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigateWebBlocking() },
-                shape = RoundedCornerShape(16.dp),
-                color = BgSecondary,
-                border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF111522))
+                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(16.dp))
+                    .clickable { onNavigateWebBlocking() }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(AccentBlue.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = AccentBlue,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Web Blocking",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextHighlight
-                            )
-                            Text(
-                                text = "Block sites system-wide",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextMuted
-                            )
-                        }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1E3A8A)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "🌐", fontSize = 16.sp)
                     }
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = TextMuted,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(text = "Web Blocking", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(text = "Block sites system-wide", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                    }
                 }
+                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(18.dp))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -408,33 +618,65 @@ fun WebAppsScreen(
 }
 
 @Composable
-fun AlwaysOnRow(title: String) {
+fun LockedAlwaysOnRow(title: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = title, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = AccentEmerald, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(text = "Always On", style = MaterialTheme.typography.labelSmall, color = AccentEmerald)
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF064E3B)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "🔒", fontSize = 10.sp)
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(text = title, fontSize = 14.sp, color = Color.White)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = "Always On", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF10B981))
         }
     }
 }
 
 @Composable
-fun ToggleRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+fun SettingsToggleRow(
+    title: String,
+    checked: Boolean,
+    subtitle: String? = null,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = title, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(text = title, fontSize = 14.sp, color = Color.White)
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = subtitle, fontSize = 11.sp, lineHeight = 15.sp, color = Color(0xFF64748B))
+            }
+        }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = AccentBlue, checkedTrackColor = BgTertiary)
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF3B82F6),
+                uncheckedThumbColor = Color(0xFF94A3B8),
+                uncheckedTrackColor = Color(0xFF1E2538)
+            )
         )
     }
 }

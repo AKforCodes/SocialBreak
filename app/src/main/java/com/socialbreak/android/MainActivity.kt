@@ -7,25 +7,30 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.socialbreak.android.data.PreferencesManager
 import com.socialbreak.android.ui.screens.*
 import com.socialbreak.android.ui.theme.*
 
 enum class ScreenTab(val title: String, val icon: ImageVector) {
-    SLEEP("Sleep", Icons.Default.Bedtime),
-    BLOCKING("Blocking", Icons.Default.Lock),
-    HOME("Home", Icons.Default.Home),
-    WEBAPPS("WebApps", Icons.Default.PlayArrow),
-    PROFILE("Profile", Icons.Default.Person)
+    SLEEP("Sleep", Icons.Outlined.Bedtime),
+    BLOCKING("Blocking", Icons.Outlined.Lock),
+    HOME("Home", Icons.Outlined.Home),
+    WEBAPPS("WebApps", Icons.Outlined.Language),
+    PROFILE("Profile", Icons.Outlined.Person)
 }
 
 enum class SubScreen {
@@ -53,15 +58,16 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    containerColor = BgPrimary,
+                    containerColor = Color(0xFF000000),
                     bottomBar = {
                         if (activeSubScreen == SubScreen.NONE) {
+                            // Exact flat 1:1 Navigation Bar across all 30 screenshots
                             NavigationBar(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .border(1.dp, BorderSubtle, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-                                containerColor = BgSecondary
+                                    .border(0.5.dp, Color(0xFF1E2538)),
+                                containerColor = Color(0xFF000000),
+                                tonalElevation = 0.dp
                             ) {
                                 listOf(
                                     ScreenTab.SLEEP,
@@ -78,18 +84,24 @@ class MainActivity : ComponentActivity() {
                                             Icon(
                                                 tab.icon,
                                                 contentDescription = tab.title,
-                                                tint = if (selected) AccentBlue else TextMuted
+                                                tint = if (selected) Color.White else Color(0xFF64748B),
+                                                modifier = Modifier.size(22.dp)
                                             )
                                         },
                                         label = {
                                             Text(
                                                 text = tab.title,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = if (selected) AccentBlue else TextMuted
+                                                fontSize = 11.sp,
+                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (selected) Color.White else Color(0xFF64748B)
                                             )
                                         },
                                         colors = NavigationBarItemDefaults.colors(
-                                            indicatorColor = BgTertiary
+                                            selectedIconColor = Color.White,
+                                            selectedTextColor = Color.White,
+                                            unselectedIconColor = Color(0xFF64748B),
+                                            unselectedTextColor = Color(0xFF64748B),
+                                            indicatorColor = Color.Transparent
                                         )
                                     )
                                 }
@@ -97,12 +109,28 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
                         when (activeSubScreen) {
-                            SubScreen.SETTINGS -> SettingsScreen(prefs)
-                            SubScreen.ANALYTICS -> TodayAnalyticsScreen(prefs)
-                            SubScreen.WEB_BLOCKING -> WebBlockingScreen(prefs, onBack = { activeSubScreen = SubScreen.NONE })
-                            SubScreen.ACCOUNT -> AccountScreen(prefs = prefs, onBack = { activeSubScreen = SubScreen.NONE })
+                            SubScreen.SETTINGS -> SettingsScreen(
+                                prefs = prefs,
+                                onBack = { activeSubScreen = SubScreen.NONE }
+                            )
+                            SubScreen.ANALYTICS -> TodayAnalyticsScreen(
+                                prefs = prefs,
+                                onBack = { activeSubScreen = SubScreen.NONE }
+                            )
+                            SubScreen.WEB_BLOCKING -> WebBlockingScreen(
+                                prefs = prefs,
+                                onBack = { activeSubScreen = SubScreen.NONE }
+                            )
+                            SubScreen.ACCOUNT -> AccountScreen(
+                                prefs = prefs,
+                                onBack = { activeSubScreen = SubScreen.NONE }
+                            )
                             SubScreen.NONE -> {
                                 when (selectedTab) {
                                     ScreenTab.SLEEP -> SleepModeScreen(
