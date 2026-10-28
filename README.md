@@ -51,7 +51,7 @@ SocialBreak/
 
 ## Installation & Verification
 
-Download the verified release APK directly from `release/SocialBreak-v1.0.0.apk` (22.6 MB) or install via ADB:
+Download the verified release APK directly from `release/SocialBreak-v1.0.0.apk` (12.1 MB Release) or install via ADB:
 
 ```bash
 adb install release/SocialBreak-v1.0.0.apk
@@ -59,7 +59,7 @@ adb install release/SocialBreak-v1.0.0.apk
 
 To compile from source:
 ```bash
-./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
 ---
