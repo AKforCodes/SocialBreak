@@ -242,7 +242,7 @@
     function captions(v) {
         if (!C.captions || role !== 'player') { if (track) track.mode = 'disabled'; return; }
         if (captionVideo !== v) { captionVideo=v; track=null; cue=null; captionText=''; }
-        if (!track) { try { track=v.addTextTrack('captions','SocialLite',document.documentElement.lang || 'en'); } catch (_) { return; } }
+        if (!track) { try { track=v.addTextTrack('captions','SocialBreak',document.documentElement.lang || 'en'); } catch (_) { return; } }
         // Android PiP captures the full player, including HTML captions. Only mirror for native video fullscreen.
         track.mode = document.fullscreenElement === v ? 'showing' : 'hidden';
         var text = all('.ytp-caption-segment').map(function(x){return x.textContent;}).join(' ').trim();

@@ -203,7 +203,7 @@ fun SocialAppIcon(
 }
 
 @Composable
-fun SocialLiteRibbonIcon(
+fun SocialBreakRibbonIcon(
     size: Dp = 24.dp,
     tint: Color = Color.White,
     modifier: Modifier = Modifier
@@ -331,7 +331,7 @@ fun ProtectionSetupBottomSheet(
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Grant these on-device permissions so SocialLite can enforce Sleep Mode, Full App Blocking, and Reels/Shorts stripping reliably.",
+                text = "Grant these on-device permissions so SocialBreak can enforce Sleep Mode, Full App Blocking, and Reels/Shorts stripping reliably.",
                 color = Color(0xFF9CA3AF),
                 fontSize = 13.sp,
                 lineHeight = 19.sp
@@ -355,7 +355,7 @@ fun ProtectionSetupBottomSheet(
 
             PermissionSetupRow(
                 title = "Display over other apps",
-                subtitle = "Required so SocialLite can show the friendly stop overlay",
+                subtitle = "Required so SocialBreak can show the friendly stop overlay",
                 granted = overlayGranted,
                 onClick = {
                     try {
@@ -372,7 +372,7 @@ fun ProtectionSetupBottomSheet(
 
             PermissionSetupRow(
                 title = "Notification access",
-                subtitle = "Redirects social media notifications into clean SocialLite tabs",
+                subtitle = "Redirects social media notifications into clean SocialBreak tabs",
                 granted = notifGranted,
                 onClick = {
                     try {

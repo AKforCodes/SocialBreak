@@ -1,6 +1,9 @@
 package com.socialbreak.android.ui.screens
 
 import android.content.Intent
+import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,10 +29,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +50,9 @@ import com.socialbreak.android.ui.components.SocialAppIcon
 import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -291,7 +300,10 @@ fun FullBlockingScreen(
                     Spacer(modifier = Modifier.weight(1f))
                 }
             } else {
-                // View 4: Focus Sprint Sessions View (Authentic Photo Artwork Cards)
+                // View 4: Focus Sprint Sessions View (Authentic Photo Artwork Cards with Animated Border Beam matching oe.c3)
+                val view = LocalView.current
+                val selectedPresetMinutes = prefs.selectedBlockDurationMinutes
+                val anyPresetSelected = selectedPresetMinutes in listOf(25, 60, 120, 240, 480)
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -307,8 +319,11 @@ fun FullBlockingScreen(
                             durationLabel = "25 min",
                             subtitle = "Focus sprint",
                             drawableRes = R.drawable.preset_focus_sprint,
+                            isSelected = selectedPresetMinutes == 25,
+                            anySelected = anyPresetSelected,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                             onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 scope.launch {
                                     prefsManager.startTimedBlock(25, untilStopped = false)
                                     pagerState.animateScrollToPage(0)
@@ -319,8 +334,11 @@ fun FullBlockingScreen(
                             durationLabel = "1 hr",
                             subtitle = "Study session",
                             drawableRes = R.drawable.preset_study_session,
+                            isSelected = selectedPresetMinutes == 60,
+                            anySelected = anyPresetSelected,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                             onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 scope.launch {
                                     prefsManager.startTimedBlock(60, untilStopped = false)
                                     pagerState.animateScrollToPage(0)
@@ -340,8 +358,11 @@ fun FullBlockingScreen(
                             durationLabel = "2 hr",
                             subtitle = "Deep work",
                             drawableRes = R.drawable.preset_deep_work,
+                            isSelected = selectedPresetMinutes == 120,
+                            anySelected = anyPresetSelected,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                             onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 scope.launch {
                                     prefsManager.startTimedBlock(120, untilStopped = false)
                                     pagerState.animateScrollToPage(0)
@@ -352,8 +373,11 @@ fun FullBlockingScreen(
                             durationLabel = "4 hr",
                             subtitle = "Half day",
                             drawableRes = R.drawable.preset_half_day,
+                            isSelected = selectedPresetMinutes == 240,
+                            anySelected = anyPresetSelected,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                             onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 scope.launch {
                                     prefsManager.startTimedBlock(240, untilStopped = false)
                                     pagerState.animateScrollToPage(0)
@@ -367,10 +391,13 @@ fun FullBlockingScreen(
                         durationLabel = "8 hr",
                         subtitle = "Work day",
                         drawableRes = R.drawable.preset_work_day,
+                        isSelected = selectedPresetMinutes == 480,
+                        anySelected = anyPresetSelected,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(106.dp),
                         onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                             scope.launch {
                                 prefsManager.startTimedBlock(480, untilStopped = false)
                                 pagerState.animateScrollToPage(0)
@@ -868,12 +895,51 @@ private fun FocusSprintPhotoCard(
     durationLabel: String,
     subtitle: String,
     drawableRes: Int,
+    isSelected: Boolean = false,
+    anySelected: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    // Spring scale & alpha matching oe.c3.a ("cardScale" & "cardAlpha")
+    val cardScale by animateFloatAsState(
+        targetValue = when {
+            isSelected -> 1.02f
+            anySelected -> 0.96f
+            else -> 1.0f
+        },
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f),
+        label = "cardScale"
+    )
+    val cardAlpha by animateFloatAsState(
+        targetValue = when {
+            isSelected -> 1.0f
+            anySelected -> 0.72f
+            else -> 1.0f
+        },
+        animationSpec = tween(durationMillis = 250),
+        label = "cardAlpha"
+    )
+
+    // Animated Border Beam ("borderBeam" / "beamPhase" in oe_c3.java: 6000ms infinite linear loop)
+    val infiniteTransition = rememberInfiniteTransition(label = "borderBeam")
+    val beamPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 6000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "beamPhase"
+    )
+
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+                alpha = cardAlpha
+            }
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
     ) {
         Image(
@@ -895,6 +961,69 @@ private fun FocusSprintPhotoCard(
                     )
                 )
         )
+
+        // 192-particle perimeter glowing Border Beam when selected (oe_c3.java lines 199-243)
+        if (isSelected) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val r = 20.dp.toPx().coerceAtMost(minOf(size.width, size.height) / 2f)
+                val straightW = (size.width - 2f * r).coerceAtLeast(0f)
+                val straightH = (size.height - 2f * r).coerceAtLeast(0f)
+                val arcLen = (0.5f * PI.toFloat() * r)
+                val perimeter = 2f * (straightW + straightH) + 4f * arcLen
+
+                fun pointOnPerimeter(frac: Float): Offset {
+                    var d = ((frac % 1f + 1f) % 1f) * perimeter
+                    // Top edge
+                    if (d <= straightW) return Offset(r + d, 0f)
+                    d -= straightW
+                    // Top-right corner
+                    if (d <= arcLen) {
+                        val a = (-PI / 2.0) + (d / arcLen) * (PI / 2.0)
+                        return Offset(size.width - r + (r * cos(a)).toFloat(), r + (r * sin(a)).toFloat())
+                    }
+                    d -= arcLen
+                    // Right edge
+                    if (d <= straightH) return Offset(size.width, r + d)
+                    d -= straightH
+                    // Bottom-right corner
+                    if (d <= arcLen) {
+                        val a = (d / arcLen) * (PI / 2.0)
+                        return Offset(size.width - r + (r * cos(a)).toFloat(), size.height - r + (r * sin(a)).toFloat())
+                    }
+                    d -= arcLen
+                    // Bottom edge
+                    if (d <= straightW) return Offset(size.width - r - d, size.height)
+                    d -= straightW
+                    // Bottom-left corner
+                    if (d <= arcLen) {
+                        val a = (PI / 2.0) + (d / arcLen) * (PI / 2.0)
+                        return Offset(r + (r * cos(a)).toFloat(), size.height - r + (r * sin(a)).toFloat())
+                    }
+                    d -= arcLen
+                    // Left edge
+                    if (d <= straightH) return Offset(0f, size.height - r - d)
+                    d -= straightH
+                    // Top-left corner
+                    val a = PI + (d / arcLen).coerceIn(0f, 1f) * (PI / 2.0)
+                    return Offset(r + (r * cos(a)).toFloat(), r + (r * sin(a)).toFloat())
+                }
+
+                val totalParticles = 192
+                val trailLengthFrac = 0.32f
+                for (i in 0 until totalParticles) {
+                    val t = i.toFloat() / totalParticles.toFloat()
+                    val posFrac = beamPhase - t * trailLengthFrac
+                    val pt = pointOnPerimeter(posFrac)
+                    val fade = (1f - t).let { it * it }
+                    drawCircle(
+                        color = Color(0xFFCCB8FF).copy(alpha = (0.85f * fade).coerceIn(0f, 1f)),
+                        radius = (2.2f * (0.4f + 0.6f * fade)).dp.toPx(),
+                        center = pt
+                    )
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)

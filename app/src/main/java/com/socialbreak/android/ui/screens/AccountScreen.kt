@@ -302,7 +302,7 @@ fun AccountScreen(
                 Text("About Your Data", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Your data stays on this device and is never shared off it. Clearing it logs you out of every platform inside SocialLite.",
+                    text = "Your data stays on this device and is never shared off it. Clearing it logs you out of every platform inside SocialBreak.",
                     color = Color(0xFFA0A3B5),
                     fontSize = 14.sp,
                     lineHeight = 20.sp

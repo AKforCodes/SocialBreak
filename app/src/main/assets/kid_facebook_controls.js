@@ -900,7 +900,7 @@ var K=Symbol.for(config.bridge); var S=window[K] || (window[K]={});
     // first 800 h1-h4/div/span for the "better on the app" TITLE, then bailed if
     // not found. But FB portals this bottom-sheet modal to the END of <body>, so
     // on a full feed the title sits PAST index 800 — never found, early return,
-    // popup persists (the reported bug, still hitting inside SocialLite).
+    // popup persists (the reported bug, still hitting inside SocialBreak).
     // Re-anchored on the modal's BUTTONS instead: the install button ("Get app"
     // etc.) is the promo's fingerprint and there are few clickables to scan (no
     // cap, position-independent). Find it → locate its modal container → click

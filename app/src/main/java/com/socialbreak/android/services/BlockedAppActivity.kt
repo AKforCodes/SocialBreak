@@ -50,7 +50,7 @@ class BlockedAppActivity : ComponentActivity() {
             "sleep_block" -> "Sleep Mode is Active"
             "focus_block" -> "Full App Blocking Active"
             "limit_block" -> "Daily App Limit Reached"
-            else -> "Paused by SocialLite"
+            else -> "Paused by SocialBreak"
         }
 
         setContent {
@@ -110,7 +110,7 @@ class BlockedAppActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "SocialLite is protecting your attention. You can still use the distraction-free WebApp inside SocialLite to check messages without infinite Reels or Shorts.",
+                            text = "SocialBreak is protecting your attention. You can still use the distraction-free WebApp inside SocialBreak to check messages without infinite Reels or Shorts.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary,
                             textAlign = TextAlign.Center,
@@ -137,7 +137,7 @@ class BlockedAppActivity : ComponentActivity() {
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Open in SocialLite",
+                                    text = "Open in SocialBreak",
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White
                                 )

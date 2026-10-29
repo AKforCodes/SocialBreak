@@ -2,14 +2,19 @@ package com.socialbreak.android
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,29 +28,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.socialbreak.android.data.AppShortcutManager
 import com.socialbreak.android.data.PreferencesManager
 import com.socialbreak.android.data.SocialBreakPreferences
-import com.socialbreak.android.ui.components.SocialLiteRibbonIcon
+import com.socialbreak.android.ui.components.SocialBreakRibbonIcon
 import com.socialbreak.android.ui.screens.*
 import com.socialbreak.android.ui.theme.SocialBreakTheme
 import com.socialbreak.android.ui.theme.SocialTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 enum class ScreenTab(val label: String, val icon: ImageVector?) {
     SLEEP("Sleep", Icons.Outlined.Bedtime),
     BLOCKING("Blocking", Icons.Outlined.Shield),
     HOME("Home", Icons.Outlined.Home),
-    WEBAPPS("WebApps", null), // Uses custom SocialLite 'S' ribbon icon
+    WEBAPPS("WebApps", null), // Uses custom SocialBreak 'S' ribbon icon
     PROFILE("Profile", Icons.Outlined.Person)
 }
 
@@ -92,6 +107,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SocialBreakMainApp(
     prefs: SocialBreakPreferences,
@@ -100,19 +116,37 @@ fun SocialBreakMainApp(
     onConsumeIntent: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    val view = LocalView.current
     val palette = SocialTheme.colors
 
-    var currentTab by remember { mutableStateOf(ScreenTab.HOME) }
+    val tabs = remember { ScreenTab.values().toList() }
+    val pagerState = rememberPagerState(
+        initialPage = ScreenTab.HOME.ordinal,
+        pageCount = { tabs.size }
+    )
+    val currentTab = tabs[pagerState.currentPage]
+
     var currentSubRoute by remember { mutableStateOf(SubRoute.NONE) }
     var initialWebAppPlatform by remember { mutableStateOf<String?>(null) }
     var didAutoLaunchCheck by remember { mutableStateOf(false) }
+
+    // Interactive Landing Tour state (me.f0.a in me_f0.java)
+    var showLandingTour by remember(prefs.hasSeenLandingTour) {
+        mutableStateOf(!prefs.hasSeenLandingTour)
+    }
+    var tourStep by remember { mutableIntStateOf(0) }
+
+    // Trigger haptic tick when swiping between tabs in HorizontalPager
+    LaunchedEffect(pagerState.currentPage) {
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
 
     // Handle Auto-Launch on first cold open
     LaunchedEffect(prefs.autoLaunchEnabled, prefs.autoLaunchPlatform) {
         if (!didAutoLaunchCheck && prefs.autoLaunchEnabled) {
             didAutoLaunchCheck = true
             initialWebAppPlatform = prefs.autoLaunchPlatform
-            currentTab = ScreenTab.WEBAPPS
+            pagerState.scrollToPage(ScreenTab.WEBAPPS.ordinal)
         }
     }
 
@@ -126,13 +160,13 @@ fun SocialBreakMainApp(
                 val platform = data.getQueryParameter("platform")?.lowercase() ?: "instagram"
                 currentSubRoute = SubRoute.NONE
                 initialWebAppPlatform = platform
-                currentTab = ScreenTab.WEBAPPS
+                pagerState.scrollToPage(ScreenTab.WEBAPPS.ordinal)
                 onConsumeIntent()
             }
             action == AppShortcutManager.ACTION_START_FOCUS_25 -> {
                 scope.launch { prefsManager.startTimedBlock(25, untilStopped = false) }
                 currentSubRoute = SubRoute.NONE
-                currentTab = ScreenTab.BLOCKING
+                pagerState.scrollToPage(ScreenTab.BLOCKING.ordinal)
                 onConsumeIntent()
             }
             action == AppShortcutManager.ACTION_OPEN_ANALYTICS -> {
@@ -176,8 +210,8 @@ fun SocialBreakMainApp(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ScreenTab.values().forEach { tab ->
-                            val isSelected = currentTab == tab && currentSubRoute == SubRoute.NONE
+                        tabs.forEachIndexed { index, tab ->
+                            val isSelected = pagerState.currentPage == index && currentSubRoute == SubRoute.NONE
                             val itemColor = if (isSelected) palette.navBarSelectedText else palette.navBarUnselectedText
 
                             Column(
@@ -186,14 +220,17 @@ fun SocialBreakMainApp(
                                     .fillMaxHeight()
                                     .clip(RoundedCornerShape(20.dp))
                                     .clickable {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         currentSubRoute = SubRoute.NONE
-                                        currentTab = tab
+                                        scope.launch {
+                                            pagerState.animateScrollToPage(index)
+                                        }
                                     },
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 if (tab == ScreenTab.WEBAPPS) {
-                                    SocialLiteRibbonIcon(
+                                    SocialBreakRibbonIcon(
                                         size = 20.dp,
                                         tint = itemColor
                                     )
@@ -244,7 +281,16 @@ fun SocialBreakMainApp(
                         prefs = prefs,
                         prefsManager = prefsManager,
                         onBack = { currentSubRoute = SubRoute.NONE },
-                        onOpenAccount = { currentSubRoute = SubRoute.ACCOUNT }
+                        onOpenAccount = { currentSubRoute = SubRoute.ACCOUNT },
+                        onStartTour = {
+                            currentSubRoute = SubRoute.NONE
+                            tourStep = 0
+                            showLandingTour = true
+                            scope.launch {
+                                prefsManager.setHasSeenLandingTour(false)
+                                pagerState.animateScrollToPage(0)
+                            }
+                        }
                     )
                 }
                 SubRoute.ACCOUNT -> {
@@ -255,43 +301,79 @@ fun SocialBreakMainApp(
                     )
                 }
                 SubRoute.NONE -> {
-                    when (currentTab) {
-                        ScreenTab.SLEEP -> SleepModeScreen(
-                            prefs = prefs,
-                            prefsManager = prefsManager
-                        )
-                        ScreenTab.BLOCKING -> FullBlockingScreen(
-                            prefs = prefs,
-                            prefsManager = prefsManager,
-                            onNavigateSettings = { currentSubRoute = SubRoute.SETTINGS }
-                        )
-                        ScreenTab.HOME -> HomeDashboardScreen(
-                            prefs = prefs,
-                            prefsManager = prefsManager,
-                            onOpenCleanWebApp = { platformId ->
-                                initialWebAppPlatform = platformId
-                                currentTab = ScreenTab.WEBAPPS
-                            },
-                            onNavigateWebBlocking = { currentSubRoute = SubRoute.WEB_BLOCKING },
-                            onNavigateTodayStats = { currentSubRoute = SubRoute.TODAY_ANALYTICS }
-                        )
-                        ScreenTab.WEBAPPS -> WebAppsScreen(
-                            prefs = prefs,
-                            prefsManager = prefsManager,
-                            initialPlatformId = initialWebAppPlatform,
-                            onClearInitialPlatform = { initialWebAppPlatform = null },
-                            onNavigateSettings = { currentSubRoute = SubRoute.SETTINGS }
-                        )
-                        ScreenTab.PROFILE -> ProfileScreen(
-                            prefs = prefs,
-                            prefsManager = prefsManager,
-                            onOpenSettings = { currentSubRoute = SubRoute.SETTINGS },
-                            onOpenAccount = { currentSubRoute = SubRoute.ACCOUNT },
-                            onOpenWebBlocking = { currentSubRoute = SubRoute.WEB_BLOCKING },
-                            onOpenTodayStats = { currentSubRoute = SubRoute.TODAY_ANALYTICS }
-                        )
+                    // HorizontalPager across all 5 main tabs (he.c1 in he_c1.java)
+                    HorizontalPager(
+                        state = pagerState,
+                        beyondViewportPageCount = 1,
+                        modifier = Modifier.fillMaxSize()
+                    ) { pageIndex ->
+                        when (tabs[pageIndex]) {
+                            ScreenTab.SLEEP -> SleepModeScreen(
+                                prefs = prefs,
+                                prefsManager = prefsManager
+                            )
+                            ScreenTab.BLOCKING -> FullBlockingScreen(
+                                prefs = prefs,
+                                prefsManager = prefsManager,
+                                onNavigateSettings = { currentSubRoute = SubRoute.SETTINGS }
+                            )
+                            ScreenTab.HOME -> HomeDashboardScreen(
+                                prefs = prefs,
+                                prefsManager = prefsManager,
+                                onOpenCleanWebApp = { platformId ->
+                                    initialWebAppPlatform = platformId
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(ScreenTab.WEBAPPS.ordinal)
+                                    }
+                                },
+                                onNavigateWebBlocking = { currentSubRoute = SubRoute.WEB_BLOCKING },
+                                onNavigateTodayStats = { currentSubRoute = SubRoute.TODAY_ANALYTICS }
+                            )
+                            ScreenTab.WEBAPPS -> WebAppsScreen(
+                                prefs = prefs,
+                                prefsManager = prefsManager,
+                                initialPlatformId = initialWebAppPlatform,
+                                onClearInitialPlatform = { initialWebAppPlatform = null },
+                                onNavigateSettings = { currentSubRoute = SubRoute.SETTINGS }
+                            )
+                            ScreenTab.PROFILE -> ProfileScreen(
+                                prefs = prefs,
+                                prefsManager = prefsManager,
+                                onOpenSettings = { currentSubRoute = SubRoute.SETTINGS },
+                                onOpenAccount = { currentSubRoute = SubRoute.ACCOUNT },
+                                onOpenWebBlocking = { currentSubRoute = SubRoute.WEB_BLOCKING },
+                                onOpenTodayStats = { currentSubRoute = SubRoute.TODAY_ANALYTICS }
+                            )
+                        }
                     }
                 }
+            }
+
+            // Interactive 5-Step Landing Tour Overlay with Curved Bezier Arrow (me.f0.a in me_f0.java)
+            if (showLandingTour && currentSubRoute == SubRoute.NONE) {
+                LandingTourOverlay(
+                    step = tourStep,
+                    onNextStep = {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        if (tourStep < 4) {
+                            val next = tourStep + 1
+                            tourStep = next
+                            scope.launch { pagerState.animateScrollToPage(next) }
+                        } else {
+                            showLandingTour = false
+                            scope.launch {
+                                prefsManager.setHasSeenLandingTour(true)
+                                pagerState.animateScrollToPage(ScreenTab.HOME.ordinal)
+                            }
+                        }
+                    },
+                    onSkip = {
+                        showLandingTour = false
+                        scope.launch {
+                            prefsManager.setHasSeenLandingTour(true)
+                        }
+                    }
+                )
             }
 
             // Draggable Floating Bubble Navigation when Navigation == "Bubble"
@@ -323,23 +405,26 @@ fun SocialBreakMainApp(
                                     .padding(vertical = 8.dp, horizontal = 10.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                ScreenTab.values().forEach { tab ->
+                                tabs.forEachIndexed { index, tab ->
                                     val isSelected = currentTab == tab && currentSubRoute == SubRoute.NONE
                                     Row(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(14.dp))
                                             .background(if (isSelected) Color(0xFF6366F1) else Color.Transparent)
                                             .clickable {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                                 currentSubRoute = SubRoute.NONE
-                                                currentTab = tab
                                                 bubbleExpanded = false
+                                                scope.launch {
+                                                    pagerState.animateScrollToPage(index)
+                                                }
                                             }
                                             .padding(horizontal = 14.dp, vertical = 9.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         if (tab == ScreenTab.WEBAPPS) {
-                                            SocialLiteRibbonIcon(size = 18.dp, tint = Color.White)
+                                            SocialBreakRibbonIcon(size = 18.dp, tint = Color.White)
                                         } else if (tab.icon != null) {
                                             Icon(
                                                 imageVector = tab.icon,
@@ -367,12 +452,146 @@ fun SocialBreakMainApp(
                                 .clip(CircleShape)
                                 .background(Color(0xFF17171F))
                                 .border(1.5.dp, Color(0xFF6366F1), CircleShape)
-                                .clickable { bubbleExpanded = !bubbleExpanded },
+                                .clickable {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    bubbleExpanded = !bubbleExpanded
+                                },
                             contentAlignment = Alignment.Center
                         ) {
-                            SocialLiteRibbonIcon(size = 24.dp, tint = Color.White)
+                            SocialBreakRibbonIcon(size = 24.dp, tint = Color.White)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandingTourOverlay(
+    step: Int,
+    onNextStep: () -> Unit,
+    onSkip: () -> Unit
+) {
+    val titles = listOf(
+        "Sleep Mode",
+        "Full App Blocking",
+        "Constellation Home",
+        "Inside SocialBreak",
+        "Profile & Analytics"
+    )
+    val descriptions = listOf(
+        "Automatically block distracting apps during bedtime and wind-down hours.",
+        "Start a timed focus sprint or deep work session whenever you need zero distractions.",
+        "Drag apps around the orbit to reorder, or drag them down to the bank to unprotect.",
+        "Use clean, distraction-free Instagram & YouTube with Reels, Shorts, and Ads stripped out.",
+        "Track your 7-petal weekly streak, configure Web Blocking, and lock in Hard Mode."
+    )
+
+    val safeStep = step.coerceIn(0, 4)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(40f)
+            .background(Color.Black.copy(alpha = 0.68f))
+            .clickable(enabled = true, onClick = {})
+    ) {
+        // Curved quadratic Bezier arrow pointing from card to the active bottom nav tab (me.f0.a)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val startX = size.width * 0.5f
+            val startY = size.height - 170.dp.toPx()
+            val targetX = size.width * ((safeStep + 0.5f) / 5f)
+            val targetY = size.height - 14.dp.toPx()
+            val ctrlX = (startX + targetX) / 2f + (targetX - startX) * 0.35f
+            val ctrlY = (startY + targetY) / 2f + 24.dp.toPx()
+
+            val path = Path().apply {
+                moveTo(startX, startY)
+                quadraticTo(ctrlX, ctrlY, targetX, targetY)
+            }
+            drawPath(
+                path = path,
+                color = Color(0xFF818CF8),
+                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+            )
+
+            // Arrowhead at (targetX, targetY)
+            val angle = atan2((targetY - ctrlY).toDouble(), (targetX - ctrlX).toDouble())
+            val headLen = 10.dp.toPx()
+            val wing1 = Offset(
+                x = targetX - (headLen * cos(angle - 0.55)).toFloat(),
+                y = targetY - (headLen * sin(angle - 0.55)).toFloat()
+            )
+            val wing2 = Offset(
+                x = targetX - (headLen * cos(angle + 0.55)).toFloat(),
+                y = targetY - (headLen * sin(angle + 0.55)).toFloat()
+            )
+            drawLine(Color(0xFF818CF8), Offset(targetX, targetY), wing1, strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
+            drawLine(Color(0xFF818CF8), Offset(targetX, targetY), wing2, strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 24.dp, vertical = 175.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF171824))
+                .border(1.dp, Color(0xFF818CF8).copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+                .padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "STEP ${safeStep + 1} OF 5",
+                color = Color(0xFF818CF8),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = titles[safeStep],
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = descriptions[safeStep],
+                color = Color(0xFFA0A3B5),
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Skip tour",
+                    color = Color(0xFF8E91A6),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clickable { onSkip() }
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color(0xFF6366F1))
+                        .clickable { onNextStep() }
+                        .padding(horizontal = 22.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = if (safeStep == 4) "Done" else "Next",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

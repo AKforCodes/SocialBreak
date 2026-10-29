@@ -1,4 +1,4 @@
-/* Generated from SLAPPTeam/sociallite-ios main a8b6ff4: RedditConfig + RedditSelectorLabels.
+/* Generated from SocialBreak RedditConfig + RedditSelectorLabels.
  * Android: runtime parent flags, opaque names, no logger, preserve Reddit sensitive-content gates.
  * Parent setting updates reload the page to restore nodes hidden by the iOS wrapper. */
 (function(config){

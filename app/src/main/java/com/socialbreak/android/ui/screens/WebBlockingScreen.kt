@@ -272,7 +272,7 @@ fun WebBlockingScreen(
         WebPresetCategoryCard(
             title = "Social apps",
             siteCount = DomainFilterRepository.SOCIAL_SITES.size,
-            description = "Blocks Instagram, TikTok, Facebook and friends in Chrome and other apps. Your SocialLite tabs keep working.",
+            description = "Blocks Instagram, TikTok, Facebook and friends in Chrome and other apps. Your SocialBreak tabs keep working.",
             checked = prefs.webBlockSocialApps,
             expanded = expandedCategory == "social",
             domains = DomainFilterRepository.SOCIAL_SITES,

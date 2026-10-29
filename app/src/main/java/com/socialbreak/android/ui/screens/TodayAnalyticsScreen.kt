@@ -2,6 +2,9 @@ package com.socialbreak.android.ui.screens
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.socialbreak.android.data.AppUsageTracker
 import com.socialbreak.android.data.SocialBreakPreferences
+import com.socialbreak.android.data.UsageStatsHelper
 import com.socialbreak.android.ui.components.ProtectionPermissionHelper
+import com.socialbreak.android.ui.components.SocialAppIcon
 import com.socialbreak.android.ui.theme.*
 
 @Composable
@@ -40,7 +45,10 @@ fun TodayAnalyticsScreen(
     val nativeSocialMinutes = remember(todayUsageList) {
         (todayUsageList.sumOf { it.foregroundTimeMillis } / 60_000L).toInt()
     }
-    val timeInAppsMinutes = nativeSocialMinutes + prefs.inSocialLiteMinutesToday
+    val perAppUsage = remember(prefs) {
+        UsageStatsHelper.getTodaySocialUsage(context)
+    }
+    val timeInAppsMinutes = nativeSocialMinutes + prefs.inSocialBreakMinutesToday
     val timeLeftMinutes = (prefs.dailyGoalMinutes - timeInAppsMinutes).coerceAtLeast(0)
 
     val hardModeMinutes = remember(prefs.hardModeEnabled, prefs.hardModeActivatedTimestamp) {
@@ -132,7 +140,7 @@ fun TodayAnalyticsScreen(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Android shares time spent in other apps only if you approve Usage Access. SocialLite reads your social apps only, and it stays on this phone.",
+                text = "Android shares time spent in other apps only if you approve Usage Access. SocialBreak reads your social apps only, and it stays on this phone.",
                 color = palette.textSecondary,
                 fontSize = 12.sp,
                 lineHeight = 17.sp
@@ -188,9 +196,9 @@ fun TodayAnalyticsScreen(
             )
             MetricDivider()
             TodayMetricRow(
-                label = "In SocialLite",
-                value = "${prefs.inSocialLiteMinutesToday}m",
-                fillFraction = (prefs.inSocialLiteMinutesToday / 60f).coerceIn(0f, 1f)
+                label = "In SocialBreak",
+                value = "${prefs.inSocialBreakMinutesToday}m",
+                fillFraction = (prefs.inSocialBreakMinutesToday / 60f).coerceIn(0f, 1f)
             )
             MetricDivider()
             TodayMetricRow(
@@ -210,6 +218,92 @@ fun TodayAnalyticsScreen(
                 value = "${hardModeMinutes}m",
                 fillFraction = (hardModeMinutes / 120f).coerceIn(0f, 1f)
             )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Per-App Brand Breakdown Card (lc.a in oe_lc.java)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(palette.cardBackground)
+                .padding(horizontal = 18.dp, vertical = 16.dp)
+        ) {
+            Text(
+                text = "By Platform",
+                color = palette.textPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            perAppUsage.forEach { entry ->
+                val brandColor = when (entry.id) {
+                    "instagram" -> Color(0xFFE8567F)
+                    "youtube" -> Color(0xFFF05555)
+                    "tiktok" -> Color(0xFF47D4C8)
+                    "snapchat" -> Color(0xFFF0C93D)
+                    "facebook" -> Color(0xFF5A8DEE)
+                    "x", "twitter" -> Color(0xFF9EA4B0)
+                    else -> Color(0xFF818CF8)
+                }
+                val limit = prefs.getAppDailyLimitMinutes(entry.id)
+                val denom = if (limit > 0) limit.toFloat() else 30f
+                val targetFrac = (entry.minutesToday.toFloat() / denom).coerceIn(0.04f, 1f)
+                val animFrac by animateFloatAsState(
+                    targetValue = targetFrac,
+                    animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+                    label = "brand-bar-${entry.id}"
+                )
+
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            SocialAppIcon(
+                                appId = entry.id,
+                                iconTheme = prefs.iconTheme,
+                                size = 26.dp,
+                                cornerRadius = 7.dp
+                            )
+                            Text(
+                                text = entry.name,
+                                color = palette.textPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Text(
+                            text = if (limit > 0) "${entry.minutesToday}m / ${limit}m" else "${entry.minutesToday}m",
+                            color = palette.textPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color(0xFF222330))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(animFrac)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(brandColor)
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -248,6 +342,11 @@ private fun TodayMetricRow(
     fillFraction: Float = 0f
 ) {
     val palette = SocialTheme.colors
+    val animatedFill by animateFloatAsState(
+        targetValue = fillFraction.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+        label = "metric-fill-$label"
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -271,7 +370,7 @@ private fun TodayMetricRow(
                 fontWeight = FontWeight.Bold
             )
         }
-        if (fillFraction > 0f) {
+        if (animatedFill > 0f) {
             Spacer(modifier = Modifier.height(6.dp))
             Box(
                 modifier = Modifier
@@ -282,7 +381,7 @@ private fun TodayMetricRow(
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(fillFraction)
+                        .fillMaxWidth(animatedFill)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(999.dp))
                         .background(Color(0xFF6366F1))

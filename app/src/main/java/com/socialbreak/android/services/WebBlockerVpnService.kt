@@ -66,7 +66,7 @@ class WebBlockerVpnService : VpnService() {
     private fun runLocalDnsFilterLoop() {
         try {
             val builder = Builder()
-                .setSession("SocialLite Web Blocking")
+                .setSession("SocialBreak Web Blocking")
                 .addAddress("10.111.222.1", 24)
                 .addDnsServer("10.111.222.2")
                 .addRoute("10.111.222.2", 32)
@@ -212,7 +212,7 @@ class WebBlockerVpnService : VpnService() {
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("SocialLite Web Blocking")
+            .setContentTitle("SocialBreak Web Blocking")
             .setContentText("Filtering blocked sites on this device.")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setOngoing(true)

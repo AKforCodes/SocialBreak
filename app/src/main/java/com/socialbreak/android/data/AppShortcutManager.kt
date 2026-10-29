@@ -23,7 +23,7 @@ object AppShortcutManager {
         val focusShortcut = ShortcutInfo.Builder(context, "shortcut_focus_25")
             .setShortLabel("25m Focus")
             .setLongLabel("Start 25m Focus Sprint")
-            .setIcon(Icon.createWithResource(context, R.drawable.sociallite_logo))
+            .setIcon(Icon.createWithResource(context, R.drawable.socialbreak_logo))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_START_FOCUS_25
@@ -34,7 +34,7 @@ object AppShortcutManager {
 
         val instagramShortcut = ShortcutInfo.Builder(context, "shortcut_clean_ig")
             .setShortLabel("Clean Instagram")
-            .setLongLabel("Open Instagram in SocialLite")
+            .setLongLabel("Open Instagram in SocialBreak")
             .setIcon(Icon.createWithResource(context, R.drawable.ic_instagram_painted))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
@@ -47,7 +47,7 @@ object AppShortcutManager {
 
         val youtubeShortcut = ShortcutInfo.Builder(context, "shortcut_clean_yt")
             .setShortLabel("Clean YouTube")
-            .setLongLabel("Open YouTube in SocialLite")
+            .setLongLabel("Open YouTube in SocialBreak")
             .setIcon(Icon.createWithResource(context, R.drawable.ic_youtube_painted))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
@@ -61,7 +61,7 @@ object AppShortcutManager {
         val statsShortcut = ShortcutInfo.Builder(context, "shortcut_stats")
             .setShortLabel("Today Stats")
             .setLongLabel("View Today's Metrics")
-            .setIcon(Icon.createWithResource(context, R.drawable.sociallite_logo))
+            .setIcon(Icon.createWithResource(context, R.drawable.socialbreak_logo))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_OPEN_ANALYTICS

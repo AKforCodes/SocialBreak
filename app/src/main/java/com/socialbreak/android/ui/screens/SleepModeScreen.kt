@@ -1,5 +1,9 @@
 package com.socialbreak.android.ui.screens
 
+import android.view.HapticFeedbackConstants
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +35,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -120,10 +125,18 @@ fun SleepModeScreen(
         if (prefs.sleepAllowedApps.isEmpty()) "None" else "${prefs.sleepAllowedApps.size} apps"
     }
 
+    val view = LocalView.current
+    // Dusk ambient background color transition (oe_kp.java: 950ms tween)
+    val sleepBgColor by animateColorAsState(
+        targetValue = if (prefs.sleepModeEnabled) Color(0xFF06060D) else palette.background,
+        animationSpec = tween(durationMillis = 950, easing = FastOutSlowInEasing),
+        label = "sleep-dusk-bg"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(palette.background)
+            .background(sleepBgColor)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
@@ -325,6 +338,7 @@ fun SleepModeScreen(
                 .clip(RoundedCornerShape(999.dp))
                 .background(ctaGradient)
                 .clickable {
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     if (prefs.sleepModeEnabled && prefs.hardModeEnabled) {
                         showDisableGauntlet = true
                     } else {
@@ -1057,6 +1071,7 @@ private fun InteractiveSleepArcDial(
     onScheduleChanged: (Int, Int, Int, Int) -> Unit
 ) {
     val textMeasurer = rememberTextMeasurer()
+    val view = LocalView.current
 
     val currentBedH by rememberUpdatedState(bedtimeHour)
     val currentBedM by rememberUpdatedState(bedtimeMinute)
@@ -1065,6 +1080,7 @@ private fun InteractiveSleepArcDial(
 
     // Track which handle is being dragged: 0 = none, 1 = bedtime, 2 = wake
     var draggingHandle by remember { mutableIntStateOf(0) }
+    var lastHapticMinutes by remember { mutableIntStateOf(-1) }
 
     Box(
         modifier = Modifier.size(256.dp),
@@ -1117,6 +1133,11 @@ private fun InteractiveSleepArcDial(
                                 val totalMins = totalSteps * 15
                                 val newH = (totalMins / 60) % 24
                                 val newM = totalMins % 60
+
+                                if (totalMins != lastHapticMinutes) {
+                                    lastHapticMinutes = totalMins
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                }
 
                                 if (draggingHandle == 1) {
                                     onScheduleChanged(newH, newM, currentWakeH, currentWakeM)

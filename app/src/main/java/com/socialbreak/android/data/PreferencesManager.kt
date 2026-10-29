@@ -53,7 +53,7 @@ data class SocialBreakPreferences(
     val autoLaunchEnabled: Boolean = false,
     val autoLaunchPlatform: String = "instagram",
 
-    // Selected WebApp in Inside SocialLite
+    // Selected WebApp in Inside SocialBreak
     val selectedWebAppPlatform: String = "instagram",
 
     // Instagram WebApp Settings
@@ -89,6 +89,9 @@ data class SocialBreakPreferences(
     // Per-App Daily Short-Form Allowance (minutes, 0 = No limit)
     val appDailyLimitsRaw: String = "",
     val hiddenHomeApps: Set<String> = emptySet(),
+    val platformOrder: List<String> = DEFAULT_PLATFORM_ORDER,
+    val constellationOrder: List<String> = DEFAULT_CONSTELLATION_ORDER,
+    val protectedHomeApps: Set<String> = DEFAULT_PROTECTED_HOME_APPS,
 
     // Web / DNS Domain Blocking
     val webBlockSocialApps: Boolean = false,
@@ -104,11 +107,17 @@ data class SocialBreakPreferences(
     val dailyGoalMinutes: Int = 30,
     val currentStreakDays: Int = 0,
     val blocksLandedToday: Int = 0,
-    val inSocialLiteMinutesToday: Int = 0,
+    val inSocialBreakMinutesToday: Int = 0,
     val sessionsToday: Int = 0,
     val limitHitsToday: Int = 0,
-    val pushedThroughToday: Int = 0
+    val pushedThroughToday: Int = 0,
+    val hasSeenLandingTour: Boolean = true
 ) {
+    companion object {
+        val DEFAULT_PLATFORM_ORDER = listOf("instagram", "youtube", "x", "tiktok", "facebook", "snapchat", "linkedin", "reddit")
+        val DEFAULT_CONSTELLATION_ORDER = listOf("instagram", "youtube", "tiktok", "snapchat", "facebook", "x")
+        val DEFAULT_PROTECTED_HOME_APPS = setOf("youtube", "instagram", "tiktok")
+    }
     fun isCurrentlyBlocked(): Boolean {
         val now = System.currentTimeMillis()
         if (fullBlockActive) {
@@ -214,8 +223,15 @@ class PreferencesManager(private val context: Context) {
         val YT_GRAYSCALE = booleanPreferencesKey("yt_grayscale")
 
         val NATIVE_REELS_BLOCKER_ENABLED = booleanPreferencesKey("native_reels_blocker_enabled")
+        val NATIVE_BLOCK_IG_REELS = booleanPreferencesKey("native_block_ig_reels")
+        val NATIVE_BLOCK_YT_SHORTS = booleanPreferencesKey("native_block_yt_shorts")
+        val NATIVE_BLOCK_TT_FOR_YOU = booleanPreferencesKey("native_block_tt_for_you")
+        val NATIVE_BLOCK_SNAP_SPOTLIGHT = booleanPreferencesKey("native_block_snap_spotlight")
         val APP_DAILY_LIMITS_RAW = stringPreferencesKey("app_daily_limits_raw")
         val HIDDEN_HOME_APPS = stringSetPreferencesKey("hidden_home_apps")
+        val PLATFORM_ORDER_RAW = stringPreferencesKey("platform_order_raw")
+        val CONSTELLATION_ORDER_RAW = stringPreferencesKey("constellation_order_raw")
+        val PROTECTED_HOME_APPS = stringSetPreferencesKey("protected_home_apps")
 
         val WEB_BLOCK_SOCIAL = booleanPreferencesKey("web_block_social")
         val WEB_BLOCK_ADULT = booleanPreferencesKey("web_block_adult")
@@ -229,10 +245,11 @@ class PreferencesManager(private val context: Context) {
         val DAILY_GOAL_MINUTES = intPreferencesKey("daily_goal_minutes")
         val CURRENT_STREAK_DAYS = intPreferencesKey("current_streak_days")
         val BLOCKS_LANDED_TODAY = intPreferencesKey("blocks_landed_today")
-        val IN_SOCIALLITE_MINUTES_TODAY = intPreferencesKey("in_sociallite_minutes_today")
+        val IN_SOCIALBREAK_MINUTES_TODAY = intPreferencesKey("in_socialbreak_minutes_today")
         val SESSIONS_TODAY = intPreferencesKey("sessions_today")
         val LIMIT_HITS_TODAY = intPreferencesKey("limit_hits_today")
         val PUSHED_THROUGH_TODAY = intPreferencesKey("pushed_through_today")
+        val HAS_SEEN_LANDING_TOUR = booleanPreferencesKey("has_seen_landing_tour")
     }
 
     val preferencesFlow: Flow<SocialBreakPreferences> = context.dataStore.data.map { prefs ->
@@ -295,8 +312,26 @@ class PreferencesManager(private val context: Context) {
             ytGrayscale = prefs[YT_GRAYSCALE] ?: false,
 
             nativeReelsBlockerEnabled = prefs[NATIVE_REELS_BLOCKER_ENABLED] ?: true,
+            nativeBlockIgReels = prefs[NATIVE_BLOCK_IG_REELS] ?: true,
+            nativeBlockYtShorts = prefs[NATIVE_BLOCK_YT_SHORTS] ?: true,
+            nativeBlockTtForYou = prefs[NATIVE_BLOCK_TT_FOR_YOU] ?: true,
+            nativeBlockSnapSpotlight = prefs[NATIVE_BLOCK_SNAP_SPOTLIGHT] ?: true,
             appDailyLimitsRaw = prefs[APP_DAILY_LIMITS_RAW] ?: "",
             hiddenHomeApps = prefs[HIDDEN_HOME_APPS] ?: emptySet(),
+            platformOrder = prefs[PLATFORM_ORDER_RAW]
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }
+                ?: SocialBreakPreferences.DEFAULT_PLATFORM_ORDER,
+            constellationOrder = prefs[CONSTELLATION_ORDER_RAW]
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() }
+                ?: SocialBreakPreferences.DEFAULT_CONSTELLATION_ORDER,
+            protectedHomeApps = prefs[PROTECTED_HOME_APPS]
+                ?: SocialBreakPreferences.DEFAULT_PROTECTED_HOME_APPS,
 
             webBlockSocialApps = prefs[WEB_BLOCK_SOCIAL] ?: false,
             webBlockAdultContent = prefs[WEB_BLOCK_ADULT] ?: false,
@@ -310,10 +345,11 @@ class PreferencesManager(private val context: Context) {
             dailyGoalMinutes = prefs[DAILY_GOAL_MINUTES] ?: 30,
             currentStreakDays = prefs[CURRENT_STREAK_DAYS] ?: 0,
             blocksLandedToday = prefs[BLOCKS_LANDED_TODAY] ?: 0,
-            inSocialLiteMinutesToday = prefs[IN_SOCIALLITE_MINUTES_TODAY] ?: 0,
+            inSocialBreakMinutesToday = prefs[IN_SOCIALBREAK_MINUTES_TODAY] ?: 0,
             sessionsToday = prefs[SESSIONS_TODAY] ?: 0,
             limitHitsToday = prefs[LIMIT_HITS_TODAY] ?: 0,
-            pushedThroughToday = prefs[PUSHED_THROUGH_TODAY] ?: 0
+            pushedThroughToday = prefs[PUSHED_THROUGH_TODAY] ?: 0,
+            hasSeenLandingTour = prefs[HAS_SEEN_LANDING_TOUR] ?: true
         )
     }
 
@@ -457,6 +493,59 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[HIDDEN_HOME_APPS] = hidden }
     }
 
+    suspend fun setPlatformOrder(order: List<String>) {
+        val clean = order.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct()
+        if (clean.isNotEmpty()) {
+            context.dataStore.edit {
+                it[PLATFORM_ORDER_RAW] = clean.joinToString(",")
+                // Keep constellation order synced for home-eligible apps
+                val homeApps = SocialBreakPreferences.DEFAULT_CONSTELLATION_ORDER.toSet()
+                val syncedConstellation = clean.filter { app -> app in homeApps } +
+                    SocialBreakPreferences.DEFAULT_CONSTELLATION_ORDER.filter { app -> app !in clean }
+                it[CONSTELLATION_ORDER_RAW] = syncedConstellation.distinct().joinToString(",")
+            }
+        }
+    }
+
+    suspend fun setConstellationOrder(order: List<String>) {
+        val clean = order.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct()
+        if (clean.isNotEmpty()) {
+            context.dataStore.edit {
+                it[CONSTELLATION_ORDER_RAW] = clean.joinToString(",")
+            }
+        }
+    }
+
+    suspend fun setAppProtectedOnHome(appId: String, isProtected: Boolean) {
+        val clean = appId.trim().lowercase()
+        context.dataStore.edit { prefs ->
+            val current = prefs[PROTECTED_HOME_APPS] ?: SocialBreakPreferences.DEFAULT_PROTECTED_HOME_APPS
+            prefs[PROTECTED_HOME_APPS] = if (isProtected) current + clean else current - clean
+            when (clean) {
+                "instagram" -> prefs[NATIVE_BLOCK_IG_REELS] = isProtected
+                "youtube" -> prefs[NATIVE_BLOCK_YT_SHORTS] = isProtected
+                "tiktok" -> prefs[NATIVE_BLOCK_TT_FOR_YOU] = isProtected
+                "snapchat" -> prefs[NATIVE_BLOCK_SNAP_SPOTLIGHT] = isProtected
+            }
+        }
+    }
+
+    suspend fun protectAllHomeApps(allApps: Collection<String>) {
+        val clean = allApps.map { it.trim().lowercase() }.toSet()
+        context.dataStore.edit { prefs ->
+            val current = prefs[PROTECTED_HOME_APPS] ?: SocialBreakPreferences.DEFAULT_PROTECTED_HOME_APPS
+            prefs[PROTECTED_HOME_APPS] = current + clean
+            if ("instagram" in clean) prefs[NATIVE_BLOCK_IG_REELS] = true
+            if ("youtube" in clean) prefs[NATIVE_BLOCK_YT_SHORTS] = true
+            if ("tiktok" in clean) prefs[NATIVE_BLOCK_TT_FOR_YOU] = true
+            if ("snapchat" in clean) prefs[NATIVE_BLOCK_SNAP_SPOTLIGHT] = true
+        }
+    }
+
+    suspend fun setHasSeenLandingTour(seen: Boolean) {
+        context.dataStore.edit { it[HAS_SEEN_LANDING_TOUR] = seen }
+    }
+
     suspend fun setBooleanPreference(key: androidx.datastore.preferences.core.Preferences.Key<Boolean>, value: Boolean) {
         context.dataStore.edit { it[key] = value }
     }
@@ -503,10 +592,10 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
-    suspend fun incrementInSocialLiteMinutes(delta: Int = 1) {
+    suspend fun incrementInSocialBreakMinutes(delta: Int = 1) {
         context.dataStore.edit {
-            val current = it[IN_SOCIALLITE_MINUTES_TODAY] ?: 0
-            it[IN_SOCIALLITE_MINUTES_TODAY] = current + delta
+            val current = it[IN_SOCIALBREAK_MINUTES_TODAY] ?: 0
+            it[IN_SOCIALBREAK_MINUTES_TODAY] = current + delta
         }
     }
 
@@ -530,7 +619,7 @@ class PreferencesManager(private val context: Context) {
             it[DAILY_GOAL_MINUTES] = 30
             it[CURRENT_STREAK_DAYS] = 0
             it[BLOCKS_LANDED_TODAY] = 0
-            it[IN_SOCIALLITE_MINUTES_TODAY] = 0
+            it[IN_SOCIALBREAK_MINUTES_TODAY] = 0
             it[SESSIONS_TODAY] = 0
             it[LIMIT_HITS_TODAY] = 0
             it[PUSHED_THROUGH_TODAY] = 0

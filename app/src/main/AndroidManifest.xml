@@ -24,9 +24,9 @@
     <application
         android:name=".SocialBreakApplication"
         android:allowBackup="false"
-        android:icon="@drawable/sociallite_logo"
+        android:icon="@drawable/socialbreak_logo"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/sociallite_logo"
+        android:roundIcon="@drawable/socialbreak_logo"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 

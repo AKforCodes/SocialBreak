@@ -39,7 +39,8 @@ fun SettingsScreen(
     prefs: SocialBreakPreferences,
     prefsManager: PreferencesManager,
     onBack: () -> Unit,
-    onOpenAccount: () -> Unit
+    onOpenAccount: () -> Unit,
+    onStartTour: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -301,6 +302,33 @@ fun SettingsScreen(
                 modifier = Modifier.size(18.dp)
             )
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // App Tour Row Card
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(palette.cardBackground)
+                .clickable { onStartTour() }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Replay App Tour",
+                color = palette.textPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = palette.textSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 
     // Navigation Style Info Dialog (from strings.xml line 440)
@@ -411,7 +439,7 @@ fun SettingsScreen(
                             text = if (prefs.autoLaunchEnabled) {
                                 "Opens directly into ${prefs.autoLaunchPlatform.replaceFirstChar { it.uppercase() }}"
                             } else {
-                                "Off — opens to the SocialLite home screen"
+                                "Off — opens to the SocialBreak home screen"
                             },
                             color = Color(0xFF8E91A6),
                             fontSize = 12.sp
@@ -499,14 +527,14 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text(
-                            text = "Redirect notifications through SocialLite",
+                            text = "Redirect notifications through SocialBreak",
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = "Tapping a notification opens it inside SocialLite instead of the native app.",
+                            text = "Tapping a notification opens it inside SocialBreak instead of the native app.",
                             color = Color(0xFF8E91A6),
                             fontSize = 12.sp,
                             lineHeight = 16.sp

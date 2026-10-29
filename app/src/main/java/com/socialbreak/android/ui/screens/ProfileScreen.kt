@@ -53,7 +53,7 @@ import com.socialbreak.android.data.PreferencesManager
 import com.socialbreak.android.data.SocialBreakPreferences
 import com.socialbreak.android.receivers.UninstallProtectionReceiver
 import com.socialbreak.android.ui.components.FrictionGauntletDialog
-import com.socialbreak.android.ui.components.SocialLiteRibbonIcon
+import com.socialbreak.android.ui.components.SocialBreakRibbonIcon
 import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -82,13 +82,13 @@ fun ProfileScreen(
     var showResetGoalsDialog by remember { mutableStateOf(false) }
     var showResetGauntlet by remember { mutableStateOf(false) }
 
-    fun shareSocialLite() {
+    fun shareSocialBreak() {
         val shareText = "I found this app that strips Reels from Instagram and Shorts from YouTube so I can stay connected without the mindless scrolling. Still have DMs, posts, everything I actually use — just none of the stuff designed to waste my time."
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, shareText)
         }
-        context.startActivity(Intent.createChooser(sendIntent, "Share SocialLite"))
+        context.startActivity(Intent.createChooser(sendIntent, "Share SocialBreak"))
     }
 
     Column(
@@ -120,7 +120,7 @@ fun ProfileScreen(
                     tint = palette.textSecondary,
                     modifier = Modifier
                         .size(20.dp)
-                        .clickable { shareSocialLite() }
+                        .clickable { shareSocialBreak() }
                 )
                 Icon(
                     imageVector = Icons.Outlined.Settings,
@@ -181,7 +181,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = if (prefs.blocksLandedToday > 0) {
-                    "${prefs.blocksLandedToday} Reels & Shorts stripped today · ${prefs.inSocialLiteMinutesToday}m in SocialLite"
+                    "${prefs.blocksLandedToday} Reels & Shorts stripped today · ${prefs.inSocialBreakMinutesToday}m in SocialBreak"
                 } else {
                     "Nothing stripped yet today. This fills in as the blocker catches reels and shorts."
                 },
@@ -222,7 +222,7 @@ fun ProfileScreen(
                         text = buildAnnotatedString {
                             append("Give your friends\n")
                             withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                                append("a week of SocialLite Pro")
+                                append("a week of SocialBreak Pro")
                             }
                         },
                         color = palette.textPrimary,
@@ -257,7 +257,7 @@ fun ProfileScreen(
                             .height(42.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color(0xFF6366F1))
-                            .clickable { shareSocialLite() },
+                            .clickable { shareSocialBreak() },
                         contentAlignment = Alignment.Center
                     ) {
                         Text("Send to a Friend", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -270,7 +270,7 @@ fun ProfileScreen(
                             .background(Color(0xFF252738))
                             .clickable {
                                 val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                cm.setPrimaryClip(ClipData.newPlainText("SocialLite Link", "https://trysociallite.com"))
+                                cm.setPrimaryClip(ClipData.newPlainText("SocialBreak Link", "https://socialbreak.app"))
                                 Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
                             },
                         contentAlignment = Alignment.Center
@@ -283,7 +283,7 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // "Stop SocialLite being deleted" Card (Views 20, 21, 22)
+        // "Stop SocialBreak being deleted" Card (Views 20, 21, 22)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -296,7 +296,7 @@ fun ProfileScreen(
         ) {
             Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                 Text(
-                    text = "Stop SocialLite being deleted",
+                    text = "Stop SocialBreak being deleted",
                     color = palette.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -422,10 +422,10 @@ fun ProfileScreen(
                             .background(Color(0xFF232536)),
                         contentAlignment = Alignment.Center
                     ) {
-                        SocialLiteRibbonIcon(size = 22.dp, tint = Color.White)
+                        SocialBreakRibbonIcon(size = 22.dp, tint = Color.White)
                     }
                     Text(
-                        text = "Stop SocialLite being deleted",
+                        text = "Stop SocialBreak being deleted",
                         color = Color.White,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold
@@ -435,7 +435,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Keeps SocialLite on this phone so blocking can't be removed by deleting the app.",
+                    text = "Keeps SocialBreak on this phone so blocking can't be removed by deleting the app.",
                     color = Color(0xFFD1D5DB),
                     fontSize = 13.sp,
                     lineHeight = 19.sp
@@ -444,7 +444,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "SocialLite asks for no other permissions here. This only stops the app being deleted — it cannot lock, wipe or track this device.",
+                    text = "SocialBreak asks for no other permissions here. This only stops the app being deleted — it cannot lock, wipe or track this device.",
                     color = Color(0xFF9CA3AF),
                     fontSize = 12.sp,
                     lineHeight = 18.sp
@@ -503,7 +503,7 @@ fun ProfileScreen(
                                             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
                                             putExtra(
                                                 DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                                                "Keeps SocialLite on this phone so blocking can't be removed by deleting the app."
+                                                "Keeps SocialBreak on this phone so blocking can't be removed by deleting the app."
                                             )
                                         }
                                         context.startActivity(intent)
@@ -538,19 +538,19 @@ fun ProfileScreen(
 
                 HelpFaqCard(
                     q = "Is my login information safe?",
-                    a = "Yes! When you log in to any platform, you're logging in directly on their official website through a standard WebView. SocialLite never sees, collects, or stores your passwords. Your session stays entirely on your device."
+                    a = "Yes! When you log in to any platform, you're logging in directly on their official website through a standard WebView. SocialBreak never sees, collects, or stores your passwords. Your session stays entirely on your device."
                 )
                 HelpFaqCard(
                     q = "Why can't I turn off Reel/Shorts blocking?",
-                    a = "Core short-form video blocking (Instagram Reels, YouTube Shorts, TikTok For You, Snapchat Spotlight) is permanently enabled because that's the entire purpose of SocialLite — helping you stay off addictive infinite feeds."
+                    a = "Core short-form video blocking (Instagram Reels, YouTube Shorts, TikTok For You, Snapchat Spotlight) is permanently enabled because that's the entire purpose of SocialBreak — helping you stay off addictive infinite feeds."
                 )
                 HelpFaqCard(
                     q = "How do I switch between multiple Instagram accounts?",
-                    a = "Open Instagram Settings inside SocialLite and tap Manage Accounts to switch or clear sessions."
+                    a = "Open Instagram Settings inside SocialBreak and tap Manage Accounts to switch or clear sessions."
                 )
                 HelpFaqCard(
                     q = "Why does the app feel a bit slower than the native app?",
-                    a = "SocialLite loads web versions of platforms and actively strips out distractions in real time. Native apps are built by teams of thousands with custom rendering engines."
+                    a = "SocialBreak loads web versions of platforms and actively strips out distractions in real time. Native apps are built by teams of thousands with custom rendering engines."
                 )
             }
         }
@@ -571,7 +571,7 @@ fun ProfileScreen(
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("About SocialLite", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("About SocialBreak", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
