@@ -382,10 +382,11 @@ fun SocialBreakMainApp(
                     )
                 }
                 SubRoute.NONE -> {
-                    // HorizontalPager across all 5 main tabs (he.c1 in he_c1.java)
+                    // HorizontalPager across all 5 main tabs with userScrollEnabled = false to prevent WebView swipe sensitivity
                     HorizontalPager(
                         state = pagerState,
                         beyondViewportPageCount = 1,
+                        userScrollEnabled = false,
                         modifier = Modifier.fillMaxSize()
                     ) { pageIndex ->
                         when (tabs[pageIndex]) {

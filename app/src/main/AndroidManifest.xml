@@ -76,13 +76,14 @@
         <service
             android:name=".services.NativeReelsBlockerService"
             android:exported="false"
+            android:label="SocialBreak Native Controls"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/app_blocker_accessibility" />
+                android:resource="@xml/native_reels_blocker_config" />
         </service>
 
         <!-- Local DNS Loopback VPN Service for System-Wide Web & Domain Blocking -->

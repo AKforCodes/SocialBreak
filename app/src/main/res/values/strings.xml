@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SocialBreak</string>
+    <string name="native_reels_blocker_description">SocialBreak Native Controls removes Reels, Shorts, Spotlight and other short-form feeds inside the real Instagram, YouTube, TikTok, Snapchat, Facebook and X apps, while keeping messages and the rest of the app usable.</string>
     <string name="accessibility_service_description">SocialBreak requires accessibility to detect when blocked apps and addictive short-form feeds (Reels/Shorts) are opened.</string>
 </resources>
