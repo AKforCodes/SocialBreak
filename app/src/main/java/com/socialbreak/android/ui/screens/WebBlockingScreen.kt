@@ -1,363 +1,572 @@
 package com.socialbreak.android.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
+import android.app.Activity
+import android.content.Intent
+import android.net.VpnService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.socialbreak.android.data.DomainFilterRepository
 import com.socialbreak.android.data.PreferencesManager
+import com.socialbreak.android.data.SocialBreakPreferences
+import com.socialbreak.android.services.WebBlockerVpnService
 import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun WebBlockingScreen(prefs: PreferencesManager, onBack: () -> Unit) {
-    val coroutineScope = rememberCoroutineScope()
+fun WebBlockingScreen(
+    prefs: SocialBreakPreferences,
+    prefsManager: PreferencesManager,
+    onBack: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val palette = SocialTheme.colors
 
-    val adultBlocked by prefs.webBlockingAdult.collectAsState(initial = false)
-    val casinosBlocked by prefs.webBlockingCasinos.collectAsState(initial = false)
-    val gamingBlocked by prefs.webBlockingGaming.collectAsState(initial = false)
-    val bettingBlocked by prefs.webBlockingBetting.collectAsState(initial = false)
-    val socialBlocked by prefs.webBlockingSocial.collectAsState(initial = false)
-    val reachableChips by prefs.reachableSocialChips.collectAsState(initial = emptySet())
+    var expandedCategory by remember { mutableStateOf<String?>("social") }
+    var isEditMode by remember { mutableStateOf(false) }
+    var newCustomDomain by remember { mutableStateOf("") }
+    var domainError by remember { mutableStateOf<String?>(null) }
 
-    var socialExpanded by remember { mutableStateOf(false) }
-    var gamingExpanded by remember { mutableStateOf(false) }
+    val vpnPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            try {
+                context.startService(Intent(context, WebBlockerVpnService::class.java))
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun syncVpnServiceState(anyActive: Boolean) {
+        if (anyActive) {
+            val prepareIntent = VpnService.prepare(context)
+            if (prepareIntent != null) {
+                vpnPermissionLauncher.launch(prepareIntent)
+            } else {
+                try {
+                    context.startService(Intent(context, WebBlockerVpnService::class.java))
+                } catch (_: Exception) {}
+            }
+        } else {
+            try {
+                context.startService(
+                    Intent(context, WebBlockerVpnService::class.java).apply {
+                        action = WebBlockerVpnService.ACTION_STOP_VPN
+                    }
+                )
+            } catch (_: Exception) {}
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF000000))
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .background(palette.background)
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
-        // Top Header (Screenshot 15: <- Web Blocking, Edit)
+        // Header Row: Back Arrow + "Web Blocking" | "Edit" / "Done"
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-                Spacer(modifier = Modifier.width(6.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = palette.textPrimary,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onBack() }
+                )
                 Text(
                     text = "Web Blocking",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = palette.textPrimary,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
+
             Text(
-                text = "Edit",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF3B82F6),
-                modifier = Modifier
-                    .clickable { }
-                    .padding(8.dp)
+                text = if (isEditMode) "Done" else "Edit",
+                color = Color(0xFF818CF8),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable { isEditMode = !isEditMode }
             )
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        // Custom Domains Section ("Your domains") shown when Edit is tapped or custom domains exist
+        if (isEditMode || prefs.customBlockedDomains.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Your domains",
+                color = palette.textSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(palette.cardBackground)
+                    .padding(16.dp)
+            ) {
+                if (isEditMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newCustomDomain,
+                            onValueChange = {
+                                newCustomDomain = it
+                                domainError = null
+                            },
+                            placeholder = {
+                                Text(
+                                    text = "Add a domain (e.g. example.com)",
+                                    color = Color(0xFF6E7185),
+                                    fontSize = 13.sp
+                                )
+                            },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = palette.textPrimary,
+                                unfocusedTextColor = palette.textPrimary,
+                                focusedBorderColor = Color(0xFF6366F1),
+                                unfocusedBorderColor = palette.border
+                            )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF6366F1))
+                                .clickable {
+                                    val clean = newCustomDomain.trim().lowercase()
+                                        .removePrefix("https://")
+                                        .removePrefix("http://")
+                                        .removePrefix("www.")
+                                        .substringBefore("/")
+                                    if (clean.contains(".") && clean.length >= 4) {
+                                        scope.launch {
+                                            prefsManager.addCustomBlockedDomain(clean)
+                                            syncVpnServiceState(true)
+                                        }
+                                        newCustomDomain = ""
+                                    } else {
+                                        domainError = "That doesn't look like a valid domain."
+                                    }
+                                }
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Add", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                    if (domainError != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(domainError!!, color = CrimsonDanger, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                if (prefs.customBlockedDomains.isEmpty()) {
+                    Text(
+                        text = "No custom domains yet. Add one above to block it everywhere.",
+                        color = palette.textSecondary,
+                        fontSize = 12.sp
+                    )
+                } else {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        prefs.customBlockedDomains.sorted().forEach { domain ->
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFF1D1E2C))
+                                    .border(0.75.dp, Color(0xFF2D2E42), RoundedCornerShape(10.dp))
+                                    .clickable(enabled = isEditMode) {
+                                        scope.launch { prefsManager.removeCustomBlockedDomain(domain) }
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Language,
+                                    contentDescription = null,
+                                    tint = Color(0xFF8E91A6),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = domain,
+                                    color = Color(0xFFD1D5DB),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                if (isEditMode) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Remove",
+                                        tint = CrimsonDanger,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
         Text(
             text = "Presets",
-            fontSize = 13.sp,
-            color = Color(0xFF64748B),
+            color = palette.textSecondary,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium
         )
+
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Preset 1: Social apps (16 sites) - Expandable (Screenshot 15, 16)
-        PresetRow(
+        // 1. Social apps — 16 sites (Views 15, 16, 17)
+        WebPresetCategoryCard(
             title = "Social apps",
-            siteCount = "16 sites",
-            icon = Icons.Outlined.People,
-            isChecked = socialBlocked,
-            isExpanded = socialExpanded,
-            onToggle = { coroutineScope.launch { prefs.setWebFilter("social", it) } },
-            onRowClick = { socialExpanded = !socialExpanded }
-        ) {
-            Column(modifier = Modifier.padding(top = 16.dp)) {
-                Text(
-                    text = "Keep these reachable",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "Chips OFF = blocked. Chips ON = still works.",
-                    fontSize = 12.sp,
-                    color = Color(0xFF64748B)
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // 2-Column Exact Grid of Chips (Screenshot 16)
-                val appPairs = DomainFilterRepository.SOCIAL_APPS.chunked(2)
-                for (pair in appPairs) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        for (app in pair) {
-                            val isReachable = reachableChips.contains(app.id)
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(44.dp)
-                                    .clip(RoundedCornerShape(9999.dp))
-                                    .background(if (isReachable) Color(0xFF1E293B) else Color(0xFF111522))
-                                    .border(
-                                        1.dp,
-                                        if (isReachable) Color(0xFF3B82F6) else Color(0xFF1E2538),
-                                        RoundedCornerShape(9999.dp)
-                                    )
-                                    .clickable {
-                                        coroutineScope.launch { prefs.toggleReachableChip(app.id) }
-                                    }
-                                    .padding(horizontal = 14.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = if (isReachable) Icons.Default.CheckCircle else Icons.Outlined.Circle,
-                                        contentDescription = null,
-                                        tint = if (isReachable) Color(0xFF3B82F6) else Color(0xFF64748B),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = app.displayName,
-                                        fontSize = 13.sp,
-                                        color = if (isReachable) Color.White else Color(0xFF94A3B8)
-                                    )
-                                }
-                            }
-                        }
-                        if (pair.size < 2) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
+            siteCount = DomainFilterRepository.SOCIAL_SITES.size,
+            description = "Blocks Instagram, TikTok, Facebook and friends in Chrome and other apps. Your SocialLite tabs keep working.",
+            checked = prefs.webBlockSocialApps,
+            expanded = expandedCategory == "social",
+            domains = DomainFilterRepository.SOCIAL_SITES,
+            whitelistedDomains = prefs.webWhitelistedDomains,
+            onToggleExpand = {
+                expandedCategory = if (expandedCategory == "social") null else "social"
+            },
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_SOCIAL, enabled)
+                    syncVpnServiceState(
+                        enabled || prefs.webBlockAdultContent || prefs.webBlockOnlineCasinos ||
+                            prefs.webBlockCasualGaming || prefs.webBlockSportsBetting ||
+                            prefs.customBlockedDomains.isNotEmpty()
+                    )
                 }
+            },
+            onToggleDomainWhitelist = { domain ->
+                scope.launch { prefsManager.toggleWhitelistedDomain(domain) }
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Preset 2: Adult content (25 sites) (Screenshot 15)
-        PresetRow(
+        // 2. Adult content — 25 sites
+        WebPresetCategoryCard(
             title = "Adult content",
-            siteCount = "25 sites",
-            icon = Icons.Outlined.Explicit,
-            isChecked = adultBlocked,
-            isExpanded = false,
-            onToggle = { coroutineScope.launch { prefs.setWebFilter("adult", it) } }
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Preset 3: Online casinos (24 sites) (Screenshot 15)
-        PresetRow(
-            title = "Online casinos",
-            siteCount = "24 sites",
-            icon = Icons.Outlined.Casino,
-            isChecked = casinosBlocked,
-            isExpanded = false,
-            onToggle = { coroutineScope.launch { prefs.setWebFilter("casinos", it) } }
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Preset 4: Casual gaming portals (21 sites) - Expandable (Screenshot 15, 17)
-        PresetRow(
-            title = "Casual gaming portals",
-            siteCount = "21 sites",
-            icon = Icons.Outlined.SportsEsports,
-            isChecked = gamingBlocked,
-            isExpanded = gamingExpanded,
-            onToggle = { coroutineScope.launch { prefs.setWebFilter("gaming", it) } },
-            onRowClick = { gamingExpanded = !gamingExpanded }
-        ) {
-            Column(modifier = Modifier.padding(top = 16.dp)) {
-                Text(
-                    text = "Sites in this pack",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // 2-Column Exact Grid of 21 Gaming Domains (Screenshot 17)
-                val domainPairs = DomainFilterRepository.CASUAL_GAMING_PORTALS.chunked(2)
-                for (pair in domainPairs) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        for (domain in pair) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(44.dp)
-                                    .clip(RoundedCornerShape(9999.dp))
-                                    .background(Color(0xFF111522))
-                                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(9999.dp))
-                                    .padding(horizontal = 14.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Language,
-                                        contentDescription = null,
-                                        tint = Color(0xFF64748B),
-                                        modifier = Modifier.size(15.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = domain,
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF94A3B8)
-                                    )
-                                }
-                            }
-                        }
-                        if (pair.size < 2) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
+            siteCount = DomainFilterRepository.ADULT_CONTENT.size,
+            description = "Tube sites, cam sites, adult creator platforms",
+            checked = prefs.webBlockAdultContent,
+            expanded = expandedCategory == "adult",
+            domains = DomainFilterRepository.ADULT_CONTENT,
+            whitelistedDomains = prefs.webWhitelistedDomains,
+            onToggleExpand = {
+                expandedCategory = if (expandedCategory == "adult") null else "adult"
+            },
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_ADULT, enabled)
+                    syncVpnServiceState(
+                        prefs.webBlockSocialApps || enabled || prefs.webBlockOnlineCasinos ||
+                            prefs.webBlockCasualGaming || prefs.webBlockSportsBetting ||
+                            prefs.customBlockedDomains.isNotEmpty()
+                    )
                 }
+            },
+            onToggleDomainWhitelist = { domain ->
+                scope.launch { prefsManager.toggleWhitelistedDomain(domain) }
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Preset 5: Sports betting (22 sites) (Screenshot 15)
-        PresetRow(
+        // 3. Online casinos — 24 sites
+        WebPresetCategoryCard(
+            title = "Online casinos",
+            siteCount = DomainFilterRepository.ONLINE_CASINOS.size,
+            description = "Slots, poker, casino operators",
+            checked = prefs.webBlockOnlineCasinos,
+            expanded = expandedCategory == "casinos",
+            domains = DomainFilterRepository.ONLINE_CASINOS,
+            whitelistedDomains = prefs.webWhitelistedDomains,
+            onToggleExpand = {
+                expandedCategory = if (expandedCategory == "casinos") null else "casinos"
+            },
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_CASINOS, enabled)
+                    syncVpnServiceState(
+                        prefs.webBlockSocialApps || prefs.webBlockAdultContent || enabled ||
+                            prefs.webBlockCasualGaming || prefs.webBlockSportsBetting ||
+                            prefs.customBlockedDomains.isNotEmpty()
+                    )
+                }
+            },
+            onToggleDomainWhitelist = { domain ->
+                scope.launch { prefsManager.toggleWhitelistedDomain(domain) }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 4. Casual gaming portals — 21 sites
+        WebPresetCategoryCard(
+            title = "Casual gaming portals",
+            siteCount = DomainFilterRepository.CASUAL_GAMING_PORTALS.size,
+            description = "Browser games, streaming, chess portals",
+            checked = prefs.webBlockCasualGaming,
+            expanded = expandedCategory == "gaming",
+            domains = DomainFilterRepository.CASUAL_GAMING_PORTALS,
+            whitelistedDomains = prefs.webWhitelistedDomains,
+            onToggleExpand = {
+                expandedCategory = if (expandedCategory == "gaming") null else "gaming"
+            },
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_GAMING, enabled)
+                    syncVpnServiceState(
+                        prefs.webBlockSocialApps || prefs.webBlockAdultContent || prefs.webBlockOnlineCasinos ||
+                            enabled || prefs.webBlockSportsBetting ||
+                            prefs.customBlockedDomains.isNotEmpty()
+                    )
+                }
+            },
+            onToggleDomainWhitelist = { domain ->
+                scope.launch { prefsManager.toggleWhitelistedDomain(domain) }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 5. Sports betting — 22 sites
+        WebPresetCategoryCard(
             title = "Sports betting",
-            siteCount = "22 sites",
-            icon = Icons.Outlined.SportsSoccer,
-            isChecked = bettingBlocked,
-            isExpanded = false,
-            onToggle = { coroutineScope.launch { prefs.setWebFilter("betting", it) } }
+            siteCount = DomainFilterRepository.SPORTS_BETTING.size,
+            description = "Sportsbooks, fantasy, prop pick sites",
+            checked = prefs.webBlockSportsBetting,
+            expanded = expandedCategory == "sports",
+            domains = DomainFilterRepository.SPORTS_BETTING,
+            whitelistedDomains = prefs.webWhitelistedDomains,
+            onToggleExpand = {
+                expandedCategory = if (expandedCategory == "sports") null else "sports"
+            },
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_SPORTS, enabled)
+                    syncVpnServiceState(
+                        prefs.webBlockSocialApps || prefs.webBlockAdultContent || prefs.webBlockOnlineCasinos ||
+                            prefs.webBlockCasualGaming || enabled ||
+                            prefs.customBlockedDomains.isNotEmpty()
+                    )
+                }
+            },
+            onToggleDomainWhitelist = { domain ->
+                scope.launch { prefsManager.toggleWhitelistedDomain(domain) }
+            }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PresetRow(
+private fun WebPresetCategoryCard(
     title: String,
-    siteCount: String,
-    icon: ImageVector,
-    isChecked: Boolean,
-    isExpanded: Boolean = false,
-    onToggle: (Boolean) -> Unit,
-    onRowClick: (() -> Unit)? = null,
-    expandedContent: (@Composable () -> Unit)? = null
+    siteCount: Int,
+    description: String,
+    checked: Boolean,
+    expanded: Boolean,
+    domains: List<String>,
+    whitelistedDomains: Set<String>,
+    onToggleExpand: () -> Unit,
+    onCheckedChange: (Boolean) -> Unit,
+    onToggleDomainWhitelist: (String) -> Unit
 ) {
-    Card(
+    val palette = SocialTheme.colors
+    val allowedInPack = domains.count { whitelistedDomains.contains(it) }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(18.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF111522)),
-        shape = RoundedCornerShape(18.dp)
+            .background(palette.cardBackground)
+            .clickable { onToggleExpand() }
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = onRowClick != null) { onRowClick?.invoke() },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF1A2234)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = title,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = siteCount,
-                                fontSize = 12.sp,
-                                color = Color(0xFF64748B)
-                            )
-                            if (onRowClick != null) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (isExpanded) "▲" else "▼",
-                                    fontSize = 8.sp,
-                                    color = Color(0xFF64748B)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Switch(
-                    checked = isChecked,
-                    onCheckedChange = onToggle,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = Color(0xFF3B82F6),
-                        uncheckedThumbColor = Color(0xFF94A3B8),
-                        uncheckedTrackColor = Color(0xFF1E2538)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = title,
+                        color = palette.textPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
                     )
+                    Text(
+                        text = if (allowedInPack > 0) {
+                            "$siteCount sites · $allowedInPack allowed"
+                        } else {
+                            "$siteCount sites"
+                        },
+                        color = palette.textSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = description,
+                    color = palette.textSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
                 )
             }
 
-            if (expandedContent != null) {
-                AnimatedVisibility(visible = isExpanded) {
-                    expandedContent()
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color(0xFF6366F1),
+                        uncheckedThumbColor = Color(0xFF8E91A6),
+                        uncheckedTrackColor = palette.switchTrackOff
+                    )
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = palette.textSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        if (expanded && domains.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Divider(color = Color(0xFF222330), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (checked) {
+                // View 17: Active Preset -> "Keep these reachable"
+                Text(
+                    text = "Keep these reachable",
+                    color = palette.textPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Chips OFF = blocked. Chips ON = still works.",
+                    color = palette.textSecondary,
+                    fontSize = 11.sp
+                )
+            } else {
+                // View 16: Inactive Preset -> "Sites in this pack"
+                Text(
+                    text = "Sites in this pack",
+                    color = palette.textSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                domains.forEach { domain ->
+                    val isWhitelisted = whitelistedDomains.contains(domain)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (isWhitelisted) Color(0xFF282B48) else Color(0xFF1D1E2C)
+                            )
+                            .border(
+                                width = 0.75.dp,
+                                color = if (isWhitelisted) Color(0xFF818CF8) else Color(0xFF2D2E42),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .clickable { onToggleDomainWhitelist(domain) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Language,
+                                contentDescription = null,
+                                tint = if (isWhitelisted) Color(0xFF818CF8) else Color(0xFF8E91A6),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = domain,
+                                color = if (isWhitelisted) Color.White else Color(0xFFD1D5DB),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
             }
         }

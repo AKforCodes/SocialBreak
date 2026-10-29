@@ -3,6 +3,7 @@ package com.socialbreak.android.services
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import com.socialbreak.android.data.DomainFilterRepository
 import com.socialbreak.android.data.PreferencesManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,34 +45,34 @@ class AppBlockerService : AccessibilityService() {
         lastEventTime = now
 
         val packageName = event.packageName?.toString() ?: return
-
-        // Ignore our own app package
         if (packageName == applicationContext.packageName) return
 
         serviceScope.launch {
-            val blockedSet = prefs.blockedPackages.first()
-            val focusBlockUntil = prefs.focusBlockUntil.first()
-            val sleepMode = prefs.sleepModeEnabled.first()
-            val currentTime = System.currentTimeMillis()
+            val currentPrefs = prefs.preferencesFlow.first()
+            val socialMeta = DomainFilterRepository.SOCIAL_APPS.find { it.nativePackage == packageName }
+            val appId = socialMeta?.id ?: PACKAGE_TO_PLATFORM[packageName]
+            val displayName = socialMeta?.displayName ?: packageName
 
-            val isFocusBlocked = currentTime < focusBlockUntil && blockedSet.contains(packageName)
-            val isSleepBlocked = sleepMode && blockedSet.contains(packageName)
-            val isDirectlyBlocked = blockedSet.contains(packageName)
+            val isSelectedSocial = appId != null && currentPrefs.blockedSocialApps.contains(appId)
+            val isSelectedOther = currentPrefs.blockedOtherApps.any {
+                packageName.contains(it, ignoreCase = true) || displayName.equals(it, ignoreCase = true)
+            }
+            val isTargetBlockedApp = isSelectedSocial || isSelectedOther
+
+            if (!isTargetBlockedApp) return@launch
+
+            val isFocusBlocked = currentPrefs.fullBlockActive &&
+                (currentPrefs.untilStoppedMode || now < currentPrefs.fullBlockEndTimeMillis)
+            val isSleepBlocked = currentPrefs.sleepModeEnabled &&
+                currentPrefs.isWithinSleepWindow() &&
+                !currentPrefs.sleepAllowedApps.contains(displayName)
 
             if (isFocusBlocked || isSleepBlocked) {
-                // Determine reason
-                val reason = when {
-                    isSleepBlocked -> "sleep_block"
-                    isFocusBlocked -> "focus_block"
-                    else -> "limit_block"
-                }
+                val reason = if (isSleepBlocked) "sleep_block" else "focus_block"
+                val platform = appId ?: packageName
 
-                val platform = PACKAGE_TO_PLATFORM[packageName] ?: packageName
-
-                // Increment metric
                 prefs.incrementBlocksLanded()
 
-                // Launch dedicated BlockedAppActivity interceptor
                 val intent = Intent(applicationContext, BlockedAppActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     putExtra("platform", platform)

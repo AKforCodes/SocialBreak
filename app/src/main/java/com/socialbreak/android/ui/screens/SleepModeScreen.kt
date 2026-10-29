@@ -1,22 +1,23 @@
 package com.socialbreak.android.ui.screens
 
-import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.RemoveCircleOutline
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,706 +29,1266 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.socialbreak.android.data.DomainFilterRepository
 import com.socialbreak.android.data.PreferencesManager
+import com.socialbreak.android.data.SocialBreakPreferences
+import com.socialbreak.android.ui.components.FrictionGauntletDialog
+import com.socialbreak.android.ui.components.ProtectionPermissionHelper
+import com.socialbreak.android.ui.components.ProtectionSetupBottomSheet
 import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.launch
-import kotlin.math.*
+import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+private enum class EditingWindDownTarget {
+    NONE, BEFORE_BED, AFTER_WAKE
+}
+
+private enum class EditingTimeTarget {
+    NONE, BEDTIME, WAKE_UP
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SleepModeScreen(
-    prefs: PreferencesManager,
-    onNavigateSettings: () -> Unit = {}
+    prefs: SocialBreakPreferences,
+    prefsManager: PreferencesManager
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val isSleepMode by prefs.sleepModeEnabled.collectAsState(initial = false)
-    val bedtimeHour by prefs.bedtimeHour.collectAsState(initial = 23)
-    val bedtimeMinute by prefs.bedtimeMinute.collectAsState(initial = 0)
-    val wakeHour by prefs.wakeHour.collectAsState(initial = 7)
-    val wakeMinute by prefs.wakeMinute.collectAsState(initial = 0)
-    val windDownMin by prefs.windDownMinutes.collectAsState(initial = 30)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val palette = SocialTheme.colors
 
     var showScheduleSheet by remember { mutableStateOf(false) }
     var showWindDownSheet by remember { mutableStateOf(false) }
-    var showBedtimePicker by remember { mutableStateOf(false) }
-    var showWakePicker by remember { mutableStateOf(false) }
-    var repeatEveryDay by remember { mutableStateOf(true) }
+    var showAllowedAppsSheet by remember { mutableStateOf(false) }
+    var showProtectionSheet by remember { mutableStateOf(false) }
+    var showDisableGauntlet by remember { mutableStateOf(false) }
+    var windDownPickerTarget by remember { mutableStateOf(EditingWindDownTarget.NONE) }
+    var editingTimeTarget by remember { mutableStateOf(EditingTimeTarget.NONE) }
 
-    val bedTimeStr = String.format("%d:%02d pm", if (bedtimeHour > 12) bedtimeHour - 12 else (if (bedtimeHour == 0) 12 else bedtimeHour), bedtimeMinute)
-    val wakeTimeStr = String.format("%d:%02d am", if (wakeHour == 0) 12 else wakeHour, wakeMinute)
+    val allProtectionsReady = remember(showProtectionSheet) {
+        ProtectionPermissionHelper.areAllProtectionsActive(context)
+    }
 
-    // Calculate duration in hours
-    val diffHours = ((wakeHour - bedtimeHour + 24) % 24).let { if (it == 0) 24 else it }
+    val totalMinutes = remember(prefs.bedtimeHour, prefs.bedtimeMinute, prefs.wakeHour, prefs.wakeMinute) {
+        val bedTotal = prefs.bedtimeHour * 60 + prefs.bedtimeMinute
+        val wakeTotal = prefs.wakeHour * 60 + prefs.wakeMinute
+        if (wakeTotal >= bedTotal) wakeTotal - bedTotal else (1440 - bedTotal) + wakeTotal
+    }
+    val sleepHours = totalMinutes / 60
+    val sleepRemMinutes = totalMinutes % 60
+
+    val windDownSummary = remember(
+        prefs.beforeBedWindDownEnabled,
+        prefs.beforeBedWindDownMinutes,
+        prefs.afterWakeWindDownEnabled,
+        prefs.afterWakeWindDownMinutes
+    ) {
+        when {
+            prefs.beforeBedWindDownEnabled && prefs.afterWakeWindDownEnabled ->
+                "${prefs.beforeBedWindDownMinutes}m / ${prefs.afterWakeWindDownMinutes}m"
+            prefs.beforeBedWindDownEnabled -> "${prefs.beforeBedWindDownMinutes} min"
+            prefs.afterWakeWindDownEnabled -> "${prefs.afterWakeWindDownMinutes} min"
+            else -> "Off"
+        }
+    }
+
+    val scheduleSummary = remember(prefs.sleepRepeatEveryDay, prefs.sleepScheduleDays) {
+        if (prefs.sleepRepeatEveryDay || prefs.sleepScheduleDays.size == 7) {
+            "Every day"
+        } else if (prefs.sleepScheduleDays.isEmpty()) {
+            "Off"
+        } else {
+            "Set per day"
+        }
+    }
+
+    val allowedSummary = remember(prefs.sleepAllowedApps) {
+        if (prefs.sleepAllowedApps.isEmpty()) "None" else "${prefs.sleepAllowedApps.size} apps"
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF000000))
+            .background(palette.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
-        // Top Header (Screenshot 1: Sleep Mode title + Gear)
+        // Top Title
+        Text(
+            text = "Sleep Mode",
+            color = palette.textPrimary,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Bedtime & Wake Up Header Row (clickable to open time picker)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 12.dp),
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Sleep Mode",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            IconButton(
-                onClick = onNavigateSettings,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color(0xFF94A3B8),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 24-Hour Circular Arc Dial (1:1 with Screenshot 1)
-        Box(
-            modifier = Modifier
-                .size(280.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.size(260.dp)) {
-                val center = Offset(size.width / 2f, size.height / 2f)
-                val radius = size.width / 2f - 24.dp.toPx()
-
-                // 1. Draw inner circular plate (#121624)
-                drawCircle(
-                    color = Color(0xFF111624),
-                    radius = radius - 8.dp.toPx(),
-                    center = center
-                )
-
-                // 2. Draw outer dark ring track
-                drawCircle(
-                    color = Color(0xFF1E2536),
-                    radius = radius,
-                    center = center,
-                    style = Stroke(width = 16.dp.toPx())
-                )
-
-                // 3. Draw 24-Hour numerals (0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22)
-                val paint = Paint().apply {
-                    color = android.graphics.Color.parseColor("#64748B")
-                    textSize = 10.dp.toPx()
-                    textAlign = Paint.Align.CENTER
-                    isAntiAlias = true
-                    typeface = android.graphics.Typeface.DEFAULT_BOLD
-                }
-
-                val hourLabels = listOf(0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22)
-                val textRadius = radius - 24.dp.toPx()
-                for (h in hourLabels) {
-                    val angleDeg = (h.toFloat() / 24f) * 360f - 90f
-                    val angleRad = Math.toRadians(angleDeg.toDouble())
-                    val x = center.x + textRadius * cos(angleRad).toFloat()
-                    val y = center.y + textRadius * sin(angleRad).toFloat() + 4.dp.toPx()
-                    drawContext.canvas.nativeCanvas.drawText(h.toString(), x, y, paint)
-                }
-
-                // 4. Draw continuous active arc (11pm / 23:00 to 7am / 07:00)
-                // 23:00 angle = (23/24)*360 - 90 = 255 degrees
-                // 7:00 angle = (7/24)*360 - 90 = 15 degrees
-                // sweepAngle = 120 degrees
-                val startAngle = (bedtimeHour.toFloat() / 24f) * 360f - 90f
-                val sweepAngle = (diffHours.toFloat() / 24f) * 360f
-
-                drawArc(
-                    brush = Brush.sweepGradient(
-                        listOf(
-                            Color(0xFFE2E8F0),
-                            Color(0xFF93C5FD),
-                            Color(0xFF60A5FA),
-                            Color(0xFFE2E8F0)
-                        )
-                    ),
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = false,
-                    style = Stroke(width = 18.dp.toPx(), cap = StrokeCap.Round)
-                )
-
-                // 5. Draw Start Knob (Moon knob at bedtime)
-                val startRad = Math.toRadians(startAngle.toDouble())
-                val startKnobX = center.x + radius * cos(startRad).toFloat()
-                val startKnobY = center.y + radius * sin(startRad).toFloat()
-
-                drawCircle(
-                    color = Color(0xFF2563EB),
-                    radius = 16.dp.toPx(),
-                    center = Offset(startKnobX, startKnobY)
-                )
-                drawCircle(
-                    color = Color.White,
-                    radius = 6.dp.toPx(),
-                    center = Offset(startKnobX, startKnobY)
-                )
-
-                // 6. Draw End Knob (Sun knob at wake time)
-                val endAngle = startAngle + sweepAngle
-                val endRad = Math.toRadians(endAngle.toDouble())
-                val endKnobX = center.x + radius * cos(endRad).toFloat()
-                val endKnobY = center.y + radius * sin(endRad).toFloat()
-
-                drawCircle(
-                    color = Color(0xFF2563EB),
-                    radius = 16.dp.toPx(),
-                    center = Offset(endKnobX, endKnobY)
-                )
-                drawCircle(
-                    color = Color(0xFFFDE047),
-                    radius = 6.dp.toPx(),
-                    center = Offset(endKnobX, endKnobY)
-                )
-            }
-
-            // Center Duration Text (8h)
-            Text(
-                text = "${diffHours}h",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Bedtime and Wake Up Row (Screenshot 1: Direct on canvas with moon/sun icons)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
-        ) {
-            // Bedtime Column
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { showBedtimePicker = true }
+                horizontalAlignment = Alignment.Start,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { editingTimeTarget = EditingTimeTarget.BEDTIME }
+                    .padding(vertical = 4.dp, horizontal = 4.dp)
             ) {
-                Text(text = "🌙", fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = bedTimeStr,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "Bedtime",
+                    color = palette.textSecondary,
                     fontSize = 12.sp,
-                    color = Color(0xFF94A3B8)
+                    fontWeight = FontWeight.Medium
                 )
+                Spacer(modifier = Modifier.height(3.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Bedtime,
+                        contentDescription = "Bedtime",
+                        tint = Color(0xFF6366F1),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = format12Hour(prefs.bedtimeHour, prefs.bedtimeMinute),
+                        color = palette.textPrimary,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
-            // Wake Up Column
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { showWakePicker = true }
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { editingTimeTarget = EditingTimeTarget.WAKE_UP }
+                    .padding(vertical = 4.dp, horizontal = 4.dp)
             ) {
-                Text(text = "☀️", fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = wakeTimeStr,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "Wake Up",
+                    color = palette.textSecondary,
                     fontSize = 12.sp,
-                    color = Color(0xFF94A3B8)
+                    fontWeight = FontWeight.Medium
                 )
+                Spacer(modifier = Modifier.height(3.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.WbSunny,
+                        contentDescription = "Wake Up",
+                        tint = Color(0xFFF59E0B),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = format12Hour(prefs.wakeHour, prefs.wakeMinute),
+                        color = palette.textPrimary,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(22.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Card 1: Repeat every day (Screenshot 1)
-        Row(
+        // Interactive 24-Hour Circular Arc Dial
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF111522))
-                .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                .clickable { showScheduleSheet = true }
-                .padding(horizontal = 16.dp, vertical = 15.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .height(265.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.CalendarToday,
-                    contentDescription = null,
-                    tint = Color(0xFF60A5FA),
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Repeat every day",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (repeatEveryDay) "Every day" else "Weekdays",
-                    fontSize = 14.sp,
-                    color = Color(0xFF94A3B8)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = Color(0xFF64748B),
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Card 2: Finish protection setup (Screenshot 1 & 5)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF111522))
-                .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 15.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Finish protection setup",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
-            Text(
-                text = "Fix",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF3B82F6),
-                modifier = Modifier.clickable { /* open permission settings */ }
+            InteractiveSleepArcDial(
+                bedtimeHour = prefs.bedtimeHour,
+                bedtimeMinute = prefs.bedtimeMinute,
+                wakeHour = prefs.wakeHour,
+                wakeMinute = prefs.wakeMinute,
+                durationLabel = if (sleepRemMinutes == 0) "${sleepHours}h" else "${sleepHours}h ${sleepRemMinutes}m",
+                onScheduleChanged = { newBedH, newBedM, newWakeH, newWakeM ->
+                    scope.launch {
+                        prefsManager.updateSleepSchedule(newBedH, newBedM, newWakeH, newWakeM)
+                    }
+                }
             )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Split Row: Wind down | Allowed (Screenshot 1)
+        // 3 Action Cards: Schedule | Wind down | Allowed
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Wind down Card
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF111522))
-                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                    .clickable { showWindDownSheet = true }
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Outlined.RemoveCircleOutline,
-                            contentDescription = null,
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Wind down",
-                            fontSize = 12.sp,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${windDownMin} min",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
-
-            // Allowed Card
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF111522))
-                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            tint = Color(0xFF10B981),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Allowed",
-                            fontSize = 12.sp,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "None",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
+            SleepSettingCard(
+                label = "Schedule",
+                value = scheduleSummary,
+                modifier = Modifier.weight(1f),
+                onClick = { showScheduleSheet = true }
+            )
+            SleepSettingCard(
+                label = "Wind down",
+                value = windDownSummary,
+                modifier = Modifier.weight(1f),
+                onClick = { showWindDownSheet = true }
+            )
+            SleepSettingCard(
+                label = "Allowed",
+                value = allowedSummary,
+                modifier = Modifier.weight(1f),
+                onClick = { showAllowedAppsSheet = true }
+            )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // CTA Pill Button (Screenshot 1: Turn on Sleep Mode -> with lavender/glow gradient)
-        Button(
-            onClick = {
-                coroutineScope.launch { prefs.setSleepMode(!isSleepMode) }
-            },
+        // Finish protection setup warning banner
+        if (!allProtectionsReady) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(palette.cardBackground)
+                    .clickable { showProtectionSheet = true }
+                    .padding(horizontal = 16.dp, vertical = 15.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(AmberGold)
+                    )
+                    Text(
+                        text = "Finish protection setup",
+                        color = palette.textPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Text(
+                    text = "Fix",
+                    color = AmberGold,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+        } else {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // Turn on / Turn off Sleep Mode Pill CTA (View 1 vs View 28)
+        val ctaGradient = if (prefs.sleepModeEnabled) {
+            // View 28: Deep muted purple gradient
+            Brush.horizontalGradient(
+                colors = listOf(Color(0xFF5D5292), Color(0xFF27223E))
+            )
+        } else {
+            // View 1: Soft lavender to warm cream gradient
+            Brush.horizontalGradient(
+                colors = listOf(Color(0xFFB8A9F8), Color(0xFFF5EFE0))
+            )
+        }
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(9999.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isSleepMode) Color(0xFF1E2436) else Color(0xFFD8C7F8)
-            )
+                .height(56.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(ctaGradient)
+                .clickable {
+                    if (prefs.sleepModeEnabled && prefs.hardModeEnabled) {
+                        showDisableGauntlet = true
+                    } else {
+                        scope.launch { prefsManager.setSleepMode(!prefs.sleepModeEnabled) }
+                    }
+                },
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = if (isSleepMode) "Turn off Sleep Mode →" else "Turn on Sleep Mode →",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isSleepMode) Color(0xFFEF4444) else Color(0xFF1E163B)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = if (prefs.sleepModeEnabled) "Turn off Sleep Mode" else "Turn on Sleep Mode",
+                    color = if (prefs.sleepModeEnabled) Color.White else Color(0xFF14121E),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = if (prefs.sleepModeEnabled) Color.White else Color(0xFF14121E),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // Schedule Modal Bottom Sheet (Screenshot 24)
+    // View 24: Schedule Bottom Sheet
     if (showScheduleSheet) {
         ModalBottomSheet(
             onDismissRequest = { showScheduleSheet = false },
-            containerColor = Color(0xFF0F131D),
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .width(36.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFF334155))
-                )
-            }
+            containerColor = Color(0xFF171822),
+            contentColor = TextPrimary,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
+            var repeatEveryDay by remember(prefs.sleepRepeatEveryDay) { mutableStateOf(prefs.sleepRepeatEveryDay) }
+            var selectedDays by remember(prefs.sleepScheduleDays) { mutableStateOf(prefs.sleepScheduleDays) }
+            val dayLabels = listOf("S", "M", "T", "W", "T", "F", "S")
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
             ) {
-                Text(
-                    text = "Schedule",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(28.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Outlined.CalendarToday,
-                            contentDescription = null,
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Repeat every day",
-                            fontSize = 16.sp,
-                            color = Color.White
-                        )
-                    }
+                    Text(
+                        text = "Schedule",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Done",
+                        color = Color(0xFF818CF8),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable {
+                            scope.launch {
+                                prefsManager.setSleepRepeatEveryDay(repeatEveryDay, selectedDays)
+                            }
+                            showScheduleSheet = false
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Repeat every day",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                     Switch(
                         checked = repeatEveryDay,
-                        onCheckedChange = { repeatEveryDay = it },
+                        onCheckedChange = { checked ->
+                            repeatEveryDay = checked
+                            if (checked) {
+                                selectedDays = setOf("0", "1", "2", "3", "4", "5", "6")
+                            }
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF10B981),
-                            uncheckedThumbColor = Color(0xFF94A3B8),
-                            uncheckedTrackColor = Color(0xFF1E2538)
+                            checkedTrackColor = Color(0xFF6366F1),
+                            uncheckedThumbColor = Color(0xFF8E91A6),
+                            uncheckedTrackColor = Color(0xFF282A3A)
                         )
                     )
                 }
-                Spacer(modifier = Modifier.height(36.dp))
-                Button(
-                    onClick = { showScheduleSheet = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(9999.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E2538))
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Done", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    dayLabels.forEachIndexed { idx, day ->
+                        val dayKey = idx.toString()
+                        val isDaySelected = selectedDays.contains(dayKey)
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(if (isDaySelected) Color(0xFF6366F1) else Color(0xFF252636))
+                                .clickable {
+                                    val updated = if (isDaySelected) selectedDays - dayKey else selectedDays + dayKey
+                                    selectedDays = updated
+                                    repeatEveryDay = updated.size == 7
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = day,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 
-    // Wind Down Modal Bottom Sheet (Screenshot 25)
+    // View 25: Wind Down Bottom Sheet
     if (showWindDownSheet) {
         ModalBottomSheet(
             onDismissRequest = { showWindDownSheet = false },
-            containerColor = Color(0xFF0F131D),
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .width(36.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFF334155))
-                )
-            }
+            containerColor = Color(0xFF171822),
+            contentColor = TextPrimary,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Wind Down",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Done",
+                        color = Color(0xFF818CF8),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { showWindDownSheet = false }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                // Before bed row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("Block apps", color = Color.White, fontSize = 14.sp)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF282A3A))
+                                .clickable { windDownPickerTarget = EditingWindDownTarget.BEFORE_BED }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "${prefs.beforeBedWindDownMinutes}m",
+                                color = Color(0xFF818CF8),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text("before bed time", color = Color.White, fontSize = 14.sp)
+                    }
+                    Switch(
+                        checked = prefs.beforeBedWindDownEnabled,
+                        onCheckedChange = { enabled ->
+                            scope.launch {
+                                prefsManager.setBeforeBedWindDown(enabled, prefs.beforeBedWindDownMinutes)
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF6366F1),
+                            uncheckedThumbColor = Color(0xFF8E91A6),
+                            uncheckedTrackColor = Color(0xFF282A3A)
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // After wake up row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("Block apps", color = Color.White, fontSize = 14.sp)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF282A3A))
+                                .clickable { windDownPickerTarget = EditingWindDownTarget.AFTER_WAKE }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "${prefs.afterWakeWindDownMinutes}m",
+                                color = Color(0xFF818CF8),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text("after you wake up", color = Color.White, fontSize = 14.sp)
+                    }
+                    Switch(
+                        checked = prefs.afterWakeWindDownEnabled,
+                        onCheckedChange = { enabled ->
+                            scope.launch {
+                                prefsManager.setAfterWakeWindDown(enabled, prefs.afterWakeWindDownMinutes)
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF6366F1),
+                            uncheckedThumbColor = Color(0xFF8E91A6),
+                            uncheckedTrackColor = Color(0xFF282A3A)
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    // Views 26 & 27: Scrollable Wheel Minute Picker Sheet
+    if (windDownPickerTarget != EditingWindDownTarget.NONE) {
+        val options = listOf(0, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120)
+        val initialMinutes = if (windDownPickerTarget == EditingWindDownTarget.BEFORE_BED) {
+            prefs.beforeBedWindDownMinutes
+        } else {
+            prefs.afterWakeWindDownMinutes
+        }
+        var selectedMin by remember(windDownPickerTarget) { mutableIntStateOf(initialMinutes) }
+
+        ModalBottomSheet(
+            onDismissRequest = { windDownPickerTarget = EditingWindDownTarget.NONE },
+            containerColor = Color(0xFF171822),
+            contentColor = TextPrimary,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Wind Down",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Cancel",
+                        color = Color(0xFF8E91A6),
+                        fontSize = 15.sp,
+                        modifier = Modifier.clickable { windDownPickerTarget = EditingWindDownTarget.NONE }
+                    )
+                    Text(
+                        text = "Done",
+                        color = Color(0xFF818CF8),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable {
+                            val target = windDownPickerTarget
+                            scope.launch {
+                                if (target == EditingWindDownTarget.BEFORE_BED) {
+                                    prefsManager.setBeforeBedWindDown(
+                                        enabled = selectedMin > 0 || prefs.beforeBedWindDownEnabled,
+                                        minutes = if (selectedMin == 0) 0 else selectedMin
+                                    )
+                                } else if (target == EditingWindDownTarget.AFTER_WAKE) {
+                                    prefsManager.setAfterWakeWindDown(
+                                        enabled = selectedMin > 0 || prefs.afterWakeWindDownEnabled,
+                                        minutes = if (selectedMin == 0) 0 else selectedMin
+                                    )
+                                }
+                            }
+                            windDownPickerTarget = EditingWindDownTarget.NONE
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val listState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = options.indexOf(selectedMin).coerceAtLeast(0)
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(190.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(options) { mins ->
+                        val isChosen = mins == selectedMin
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isChosen) Color(0xFF252738) else Color.Transparent)
+                                .clickable { selectedMin = mins },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "$mins min",
+                                color = if (isChosen) Color.White else Color(0xFF7B7E94),
+                                fontSize = if (isChosen) 17.sp else 15.sp,
+                                fontWeight = if (isChosen) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Bedtime / Wake Up Time Picker Sheet
+    if (editingTimeTarget != EditingTimeTarget.NONE) {
+        val isBedtime = editingTimeTarget == EditingTimeTarget.BEDTIME
+        var tempHour by remember(editingTimeTarget) {
+            mutableIntStateOf(if (isBedtime) prefs.bedtimeHour else prefs.wakeHour)
+        }
+        var tempMinute by remember(editingTimeTarget) {
+            mutableIntStateOf(if (isBedtime) prefs.bedtimeMinute else prefs.wakeMinute)
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { editingTimeTarget = EditingTimeTarget.NONE },
+            containerColor = Color(0xFF171822),
+            contentColor = Color.White,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Cancel",
+                        color = Color(0xFF8E91A6),
+                        fontSize = 15.sp,
+                        modifier = Modifier.clickable { editingTimeTarget = EditingTimeTarget.NONE }
+                    )
+                    Text(
+                        text = if (isBedtime) "Bedtime" else "Wake Up",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Done",
+                        color = Color(0xFF818CF8),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable {
+                            scope.launch {
+                                if (isBedtime) {
+                                    prefsManager.updateSleepSchedule(tempHour, tempMinute, prefs.wakeHour, prefs.wakeMinute)
+                                } else {
+                                    prefsManager.updateSleepSchedule(prefs.bedtimeHour, prefs.bedtimeMinute, tempHour, tempMinute)
+                                }
+                            }
+                            editingTimeTarget = EditingTimeTarget.NONE
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = format12Hour(tempHour, tempMinute),
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Hour & Minute steppers
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Bedtime winddown block
-                    Box(
+                    Column(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF181E2E))
-                            .clickable {
-                                showWindDownSheet = false
-                                showBedtimePicker = true
-                            }
-                            .padding(18.dp)
+                            .background(Color(0xFF222330))
+                            .padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column {
-                            Text(text = "Block apps", fontSize = 12.sp, color = Color(0xFF94A3B8))
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "${windDownMin}m", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "before bed time", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text("Hour", color = Color(0xFF8E91A6), fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2E3042))
+                                    .clickable { tempHour = (tempHour + 23) % 24 },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("—", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                text = "${if (tempHour % 12 == 0) 12 else tempHour % 12}",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2E3042))
+                                    .clickable { tempHour = (tempHour + 1) % 24 },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("+", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
 
-                    // Wakeup winddown block
-                    Box(
+                    Column(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF181E2E))
-                            .clickable {
-                                showWindDownSheet = false
-                                showWakePicker = true
-                            }
-                            .padding(18.dp)
+                            .background(Color(0xFF222330))
+                            .padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column {
-                            Text(text = "Block apps", fontSize = 12.sp, color = Color(0xFF94A3B8))
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "${windDownMin}m", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "after you wake up", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text("Minute", color = Color(0xFF8E91A6), fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2E3042))
+                                    .clickable { tempMinute = (tempMinute + 45) % 60 },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("—", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                text = tempMinute.toString().padStart(2, '0'),
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2E3042))
+                                    .clickable { tempMinute = (tempMinute + 15) % 60 },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("+", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = { showWindDownSheet = false },
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // AM / PM Toggle
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(9999.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E2538))
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF222330))
+                        .padding(4.dp)
                 ) {
-                    Text("Done", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    val isPm = tempHour >= 12
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (!isPm) Color(0xFF6366F1) else Color.Transparent)
+                            .clickable { if (tempHour >= 12) tempHour -= 12 },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("AM", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (isPm) Color(0xFF6366F1) else Color.Transparent)
+                            .clickable { if (tempHour < 12) tempHour += 12 },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("PM", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
+            }
+        }
+    }
+
+    // Allowed Apps Bottom Sheet
+    if (showAllowedAppsSheet) {
+        val essentialCandidates = listOf(
+            "Phone & Dialer",
+            "Messages (SMS)",
+            "Alarm & Clock",
+            "Calendar",
+            "Maps & Navigation",
+            "Uber / Lyft",
+            "Spotify / Music",
+            "Notes"
+        ) + DomainFilterRepository.SOCIAL_APPS.map { it.displayName }
+
+        var selectedAllowed by remember(prefs.sleepAllowedApps) { mutableStateOf(prefs.sleepAllowedApps) }
+
+        ModalBottomSheet(
+            onDismissRequest = { showAllowedAppsSheet = false },
+            containerColor = Color(0xFF14141C),
+            contentColor = Color.White,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp)
+                    .padding(bottom = 28.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Always allowed",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "These apps still open while Sleep Mode is on.",
+                            color = Color(0xFF8E91A6),
+                            fontSize = 13.sp
+                        )
+                    }
+                    Text(
+                        text = "Done",
+                        color = Color(0xFF818CF8),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable {
+                            scope.launch { prefsManager.setSleepAllowedApps(selectedAllowed) }
+                            showAllowedAppsSheet = false
+                        }
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(essentialCandidates) { appName ->
+                        val isAllowed = selectedAllowed.contains(appName)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF1D1E2B))
+                                .clickable {
+                                    selectedAllowed = if (isAllowed) selectedAllowed - appName else selectedAllowed + appName
+                                }
+                                .padding(horizontal = 16.dp, vertical = 13.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = appName,
+                                color = Color.White,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isAllowed) Color(0xFF6366F1) else Color.Transparent)
+                                    .border(
+                                        width = 1.5.dp,
+                                        color = if (isAllowed) Color(0xFF6366F1) else Color(0xFF4A4D62),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isAllowed) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    // Wheel Picker for Bedtime Wind Down (Screenshot 26)
-    if (showBedtimePicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showBedtimePicker = false },
-            containerColor = Color(0xFF0F131D)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Block apps before bed time",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                // Simulated wheel picker with highlight bars
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "25 min", fontSize = 15.sp, color = Color(0xFF64748B))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(1.dp)
-                            .background(Color(0xFF334155))
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "30 min", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(1.dp)
-                            .background(Color(0xFF334155))
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "35 min", fontSize = 15.sp, color = Color(0xFF64748B))
-                }
-                Spacer(modifier = Modifier.height(40.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(onClick = { showBedtimePicker = false }) {
-                        Text("Cancel", color = Color(0xFF94A3B8), fontSize = 15.sp)
-                    }
-                    TextButton(onClick = {
-                        coroutineScope.launch { prefs.setWindDownMinutes(30) }
-                        showBedtimePicker = false
-                    }) {
-                        Text("Done", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
+    if (showProtectionSheet) {
+        ProtectionSetupBottomSheet(onDismiss = { showProtectionSheet = false })
     }
 
-    // Wheel Picker for Wakeup Wind Down (Screenshot 27)
-    if (showWakePicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showWakePicker = false },
-            containerColor = Color(0xFF0F131D)
+    if (showDisableGauntlet) {
+        FrictionGauntletDialog(
+            actionLabel = "Sleep Mode",
+            onDismiss = { showDisableGauntlet = false },
+            onPassed = {
+                showDisableGauntlet = false
+                scope.launch { prefsManager.setSleepMode(false) }
+            }
+        )
+    }
+}
+
+@Composable
+private fun SleepSettingCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val palette = SocialTheme.colors
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(palette.cardBackground)
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 14.dp)
+    ) {
+        Text(
+            text = label,
+            color = palette.textSecondary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Normal
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            color = palette.textPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun InteractiveSleepArcDial(
+    bedtimeHour: Int,
+    bedtimeMinute: Int,
+    wakeHour: Int,
+    wakeMinute: Int,
+    durationLabel: String,
+    onScheduleChanged: (Int, Int, Int, Int) -> Unit
+) {
+    val textMeasurer = rememberTextMeasurer()
+
+    val currentBedH by rememberUpdatedState(bedtimeHour)
+    val currentBedM by rememberUpdatedState(bedtimeMinute)
+    val currentWakeH by rememberUpdatedState(wakeHour)
+    val currentWakeM by rememberUpdatedState(wakeMinute)
+
+    // Track which handle is being dragged: 0 = none, 1 = bedtime, 2 = wake
+    var draggingHandle by remember { mutableIntStateOf(0) }
+
+    Box(
+        modifier = Modifier.size(256.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val center = Offset(size.width / 2f, size.height / 2f)
+                            val strokeW = 28.dp.toPx()
+                            val minDim = minOf(size.width, size.height).toFloat()
+                            val radius = (minDim - strokeW) / 2f
+
+                            val bedFrac = (currentBedH * 60 + currentBedM) / 1440f
+                            val wakeFrac = (currentWakeH * 60 + currentWakeM) / 1440f
+
+                            val startRad = (-90f + bedFrac * 360f) * (PI / 180f).toFloat()
+                            val endRad = (-90f + wakeFrac * 360f) * (PI / 180f).toFloat()
+
+                            val bedPos = Offset(
+                                center.x + radius * cos(startRad),
+                                center.y + radius * sin(startRad)
+                            )
+                            val wakePos = Offset(
+                                center.x + radius * cos(endRad),
+                                center.y + radius * sin(endRad)
+                            )
+
+                            val distBed = hypot(offset.x - bedPos.x, offset.y - bedPos.y)
+                            val distWake = hypot(offset.x - wakePos.x, offset.y - wakePos.y)
+
+                            draggingHandle = if (distBed <= distWake) 1 else 2
+                        },
+                        onDragEnd = { draggingHandle = 0 },
+                        onDragCancel = { draggingHandle = 0 },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            if (draggingHandle != 0) {
+                                val center = Offset(size.width / 2f, size.height / 2f)
+                                val dx = change.position.x - center.x
+                                val dy = change.position.y - center.y
+                                var deg = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat() + 90f
+                                if (deg < 0f) deg += 360f
+
+                                // Snap to 15-minute increments (96 steps in 24h)
+                                val totalSteps = ((deg / 360f) * 96f).roundToInt() % 96
+                                val totalMins = totalSteps * 15
+                                val newH = (totalMins / 60) % 24
+                                val newM = totalMins % 60
+
+                                if (draggingHandle == 1) {
+                                    onScheduleChanged(newH, newM, currentWakeH, currentWakeM)
+                                } else {
+                                    onScheduleChanged(currentBedH, currentBedM, newH, newM)
+                                }
+                            }
+                        }
+                    )
+                }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Block apps after you wake up",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+            val strokeWidth = 28.dp.toPx()
+            val radius = (size.minDimension - strokeWidth) / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+
+            // 1. Outer Ring Track
+            drawCircle(
+                color = Color(0xFF353746),
+                radius = radius,
+                center = center,
+                style = Stroke(width = strokeWidth)
+            )
+
+            // 2. Inner Dial Plate
+            drawCircle(
+                color = Color(0xFF141624),
+                radius = radius - strokeWidth / 2f,
+                center = center
+            )
+
+            // 3. 24-Hour Clock Ticks inside the inner plate
+            val tickOuterR = radius - strokeWidth / 2f - 8.dp.toPx()
+            for (h in 0 until 24) {
+                val angleRad = (-90f + h * 15f) * (PI / 180f).toFloat()
+                val isCardinal = h % 6 == 0
+                val tickLen = if (isCardinal) 7.dp.toPx() else 4.dp.toPx()
+                val tickInnerR = tickOuterR - tickLen
+                val startPt = Offset(
+                    center.x + tickOuterR * cos(angleRad),
+                    center.y + tickOuterR * sin(angleRad)
                 )
-                Spacer(modifier = Modifier.height(32.dp))
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "25 min", fontSize = 15.sp, color = Color(0xFF64748B))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(1.dp)
-                            .background(Color(0xFF334155))
+                val endPt = Offset(
+                    center.x + tickInnerR * cos(angleRad),
+                    center.y + tickInnerR * sin(angleRad)
+                )
+                drawLine(
+                    color = if (isCardinal) Color(0xFF8E91A6) else Color(0xFF434659),
+                    start = startPt,
+                    end = endPt,
+                    strokeWidth = if (isCardinal) 2.dp.toPx() else 1.2.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+
+            // 4. Cardinal Hour Labels (12AM, 6AM, 12, 6PM)
+            val labels = listOf(
+                Triple("12AM", 0f, -1f),
+                Triple("6AM", 1f, 0f),
+                Triple("12", 0f, 1f),
+                Triple("6PM", -1f, 0f)
+            )
+            val labelRadius = tickOuterR - 20.dp.toPx()
+            labels.forEach { (txt, dx, dy) ->
+                val measured = textMeasurer.measure(
+                    text = txt,
+                    style = TextStyle(
+                        color = Color(0xFF7B7E94),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = DmSansFontFamily
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "30 min", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(1.dp)
-                            .background(Color(0xFF334155))
+                )
+                drawText(
+                    textLayoutResult = measured,
+                    topLeft = Offset(
+                        x = center.x + dx * labelRadius - measured.size.width / 2f,
+                        y = center.y + dy * labelRadius - measured.size.height / 2f
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "35 min", fontSize = 15.sp, color = Color(0xFF64748B))
-                }
-                Spacer(modifier = Modifier.height(40.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(onClick = { showWakePicker = false }) {
-                        Text("Cancel", color = Color(0xFF94A3B8), fontSize = 15.sp)
-                    }
-                    TextButton(onClick = {
-                        coroutineScope.launch { prefs.setWindDownMinutes(30) }
-                        showWakePicker = false
-                    }) {
-                        Text("Done", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
+                )
+            }
+
+            // 5. Active Sleep Arc (24h Clockwise: 12AM = -90deg)
+            val bedFraction = (bedtimeHour * 60 + bedtimeMinute) / 1440f
+            val wakeFraction = (wakeHour * 60 + wakeMinute) / 1440f
+            val startAngle = -90f + (bedFraction * 360f)
+            val rawSweep = (wakeFraction - bedFraction) * 360f
+            val sweepAngle = if (rawSweep <= 0f) rawSweep + 360f else rawSweep
+
+            drawArc(
+                brush = Brush.sweepGradient(
+                    colors = listOf(Color(0xFFF2F0F8), Color(0xFFFDFBF0), Color(0xFFF2F0F8)),
+                    center = center
+                ),
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2f, radius * 2f),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+
+            // 6. Bedtime Handle (Moon Icon on White Thumb)
+            val startRad = startAngle * (PI / 180f).toFloat()
+            val startThumb = Offset(
+                center.x + radius * cos(startRad),
+                center.y + radius * sin(startRad)
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 12.5.dp.toPx(),
+                center = startThumb
+            )
+            // Crescent moon inside bedtime thumb
+            drawCircle(
+                color = Color(0xFF6366F1),
+                radius = 5.5.dp.toPx(),
+                center = startThumb
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 4.2.dp.toPx(),
+                center = Offset(startThumb.x + 2.5.dp.toPx(), startThumb.y - 2.dp.toPx())
+            )
+
+            // 7. Wake Handle (Sun Icon on White Thumb)
+            val endRad = (startAngle + sweepAngle) * (PI / 180f).toFloat()
+            val endThumb = Offset(
+                center.x + radius * cos(endRad),
+                center.y + radius * sin(endRad)
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 12.5.dp.toPx(),
+                center = endThumb
+            )
+            drawCircle(
+                color = Color(0xFF6366F1),
+                radius = 4.5.dp.toPx(),
+                center = endThumb
+            )
+            for (ray in 0 until 8) {
+                val rAngle = ray * 45f * (PI / 180f).toFloat()
+                val rIn = 6.2.dp.toPx()
+                val rOut = 8.2.dp.toPx()
+                drawLine(
+                    color = Color(0xFF6366F1),
+                    start = Offset(endThumb.x + rIn * cos(rAngle), endThumb.y + rIn * sin(rAngle)),
+                    end = Offset(endThumb.x + rOut * cos(rAngle), endThumb.y + rOut * sin(rAngle)),
+                    strokeWidth = 1.4.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
             }
         }
+
+        // Center Duration Readout ("8h")
+        Text(
+            text = durationLabel,
+            color = Color.White,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
+}
+
+private fun format12Hour(hour: Int, minute: Int): String {
+    val amPm = if (hour < 12) "am" else "pm"
+    val h12 = when {
+        hour == 0 -> 12
+        hour > 12 -> hour - 12
+        else -> hour
+    }
+    val mStr = minute.toString().padStart(2, '0')
+    return "$h12:$mStr $amPm"
 }

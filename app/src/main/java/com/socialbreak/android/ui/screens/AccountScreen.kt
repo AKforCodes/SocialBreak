@@ -1,21 +1,20 @@
 package com.socialbreak.android.ui.screens
 
+import android.webkit.CookieManager
+import android.webkit.WebStorage
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DeleteForever
-import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PersonRemove
-import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,290 +25,506 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.socialbreak.android.data.LocalBackupManager
 import com.socialbreak.android.data.PreferencesManager
+import com.socialbreak.android.data.SocialBreakPreferences
+import com.socialbreak.android.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun AccountScreen(
-    prefs: PreferencesManager,
-    onBack: () -> Unit = {}
+    prefs: SocialBreakPreferences,
+    prefsManager: PreferencesManager,
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+    val palette = SocialTheme.colors
 
-    var showPinDialog by remember { mutableStateOf(false) }
-    var pinDialogMode by remember { mutableStateOf("export") }
-    var pinInput by remember { mutableStateOf("") }
-
-    if (showPinDialog) {
-        AlertDialog(
-            onDismissRequest = { showPinDialog = false },
-            title = {
-                Text(
-                    text = if (pinDialogMode == "export") "Create Encrypted Backup" else "Restore Encrypted Backup",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter a 4-digit PIN to secure your local AES-256 backup file (.sbk):",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 13.sp
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    OutlinedTextField(
-                        value = pinInput,
-                        onValueChange = { if (it.length <= 8) pinInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Enter PIN", color = Color(0xFF64748B)) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = Color(0xFF3B82F6),
-                            unfocusedBorderColor = Color(0xFF334155)
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val pin = pinInput.trim()
-                        if (pin.isNotEmpty()) {
-                            showPinDialog = false
-                            coroutineScope.launch {
-                                if (pinDialogMode == "export") {
-                                    val file = LocalBackupManager.createEncryptedBackup(context, prefs, pin)
-                                    Toast.makeText(context, "Encrypted backup exported: ${file.name}", Toast.LENGTH_LONG).show()
-                                } else {
-                                    val success = LocalBackupManager.restoreEncryptedBackup(context, prefs, pin)
-                                    val msg = if (success) "Backup restored successfully!" else "Restore failed: Invalid PIN or file"
-                                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                                }
-                                pinInput = ""
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
-                ) {
-                    Text("Proceed", color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPinDialog = false; pinInput = "" }) {
-                    Text("Cancel", color = Color(0xFF94A3B8))
-                }
-            },
-            containerColor = Color(0xFF111522)
-        )
-    }
+    var showDataInfoDialog by remember { mutableStateOf(false) }
+    var showClearAllCookiesDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showEditEmailDialog by remember { mutableStateOf(false) }
+    var showBackupPanel by remember { mutableStateOf(false) }
+    var backupPassphrase by remember { mutableStateOf("") }
+    var backupPayload by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF000000))
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .background(palette.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
-        // Top Header (Screenshot 23: <- Account)
+        // Header Row: Back Chevron + "Account" (View 23)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.width(6.dp))
+            Icon(
+                imageVector = Icons.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = palette.textPrimary,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { onBack() }
+            )
             Text(
                 text = "Account",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = palette.textPrimary,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold
             )
         }
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        Text(
-            text = "ACCOUNT & DATA",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF64748B),
-            letterSpacing = 0.5.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Card (Screenshot 23)
-        Card(
+        // Main 4-Row Account Card matching View 23 1:1
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF111522)),
-            shape = RoundedCornerShape(20.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(palette.cardBackground)
+                .padding(horizontal = 16.dp, vertical = 6.dp)
         ) {
-            Column {
-                // Row 1: Account on left, email on right
+            // Row 1: Account | akinphil2005@gmail.com
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showEditEmailDialog = true }
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Account",
+                    color = palette.textSecondary,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = prefs.accountEmail,
+                    color = palette.textPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Divider(color = Color(0xFF1F202D), thickness = 0.75.dp)
+
+            // Row 2: Log out of all accounts (blue trash icon + info icon)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showClearAllCookiesDialog = true }
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Account", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                    Text("local.device@socialbreak.app", fontSize = 14.sp, color = Color(0xFF64748B))
+                    Icon(
+                        imageVector = Icons.Outlined.DeleteOutline,
+                        contentDescription = null,
+                        tint = Color(0xFF60A5FA),
+                        modifier = Modifier.size(19.dp)
+                    )
+                    Text(
+                        text = "Log out of all accounts",
+                        color = palette.textPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
-
-                HorizontalDivider(color = Color(0xFF1E2538), thickness = 0.5.dp)
-
-                // Row 2: Log out of all accounts (Blue trash icon, info i on right)
-                Row(
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Info",
+                    tint = palette.textSecondary,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            Toast.makeText(context, "Logged out of all accounts", Toast.LENGTH_SHORT).show()
-                        }
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF1E293B)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Outlined.Delete,
-                                contentDescription = null,
-                                tint = Color(0xFF3B82F6),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Text("Log out of all accounts", fontSize = 15.sp, color = Color.White)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF334155)),
-                        contentAlignment = Alignment.Center
+                        .size(18.dp)
+                        .clickable { showDataInfoDialog = true }
+                )
+            }
+
+            Divider(color = Color(0xFF1F202D), thickness = 0.75.dp)
+
+            // Row 3: Log Out (amber exit icon)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showLogoutDialog = true }
+                    .padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.ExitToApp,
+                    contentDescription = null,
+                    tint = Color(0xFFFBBF24),
+                    modifier = Modifier.size(19.dp)
+                )
+                Text(
+                    text = "Log Out",
+                    color = palette.textPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Divider(color = Color(0xFF1F202D), thickness = 0.75.dp)
+
+            // Row 4: Delete Account — Permanently remove all data (red icon)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDeleteAccountDialog = true }
+                    .padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.PersonRemove,
+                    contentDescription = null,
+                    tint = Color(0xFFF87171),
+                    modifier = Modifier.size(19.dp)
+                )
+                Column {
+                    Text(
+                        text = "Delete Account",
+                        color = Color(0xFFF87171),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Permanently remove all data",
+                        color = palette.textSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Subtle On-Device Encrypted Backup Toggle
+        Text(
+            text = if (showBackupPanel) "Hide local encrypted backup" else "Local encrypted backup (Export / Import)",
+            color = palette.textSecondary,
+            fontSize = 12.sp,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clickable { showBackupPanel = !showBackupPanel }
+                .padding(vertical = 6.dp)
+        )
+
+        if (showBackupPanel) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(palette.cardBackground)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "AES-256-GCM Local Backup",
+                    color = palette.textPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedTextField(
+                    value = backupPassphrase,
+                    onValueChange = { backupPassphrase = it },
+                    label = { Text("Passphrase") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = backupPayload,
+                    onValueChange = { backupPayload = it },
+                    label = { Text("Encrypted Payload") },
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = {
+                            if (backupPassphrase.isNotBlank()) {
+                                backupPayload = LocalBackupManager.exportEncryptedBackup(prefs, backupPassphrase)
+                                Toast.makeText(context, "Encrypted backup generated", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text("i", fontSize = 10.sp, color = Color.White)
+                        Text("Export")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            if (backupPassphrase.isNotBlank() && backupPayload.isNotBlank()) {
+                                scope.launch {
+                                    val ok = LocalBackupManager.importEncryptedBackup(
+                                        backupPayload.trim(),
+                                        backupPassphrase,
+                                        prefsManager
+                                    )
+                                    Toast.makeText(
+                                        context,
+                                        if (ok) "Backup restored!" else "Wrong passphrase or payload",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Import")
                     }
                 }
+            }
+        }
+    }
 
-                HorizontalDivider(color = Color(0xFF1E2538), thickness = 0.5.dp)
-
-                // Row 3: Log Out (Yellow exit icon)
-                Row(
+    // "About Your Data" Info Dialog (from strings.xml line 1440)
+    if (showDataInfoDialog) {
+        Dialog(onDismissRequest = { showDataInfoDialog = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF171822))
+                    .padding(24.dp)
+            ) {
+                Text("About Your Data", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Your data stays on this device and is never shared off it. Clearing it logs you out of every platform inside SocialLite.",
+                    color = Color(0xFFA0A3B5),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF6366F1))
+                        .clickable { showDataInfoDialog = false },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("OK", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+
+    // "Clear All Data?" Dialog (from strings.xml line 1438)
+    if (showClearAllCookiesDialog) {
+        Dialog(onDismissRequest = { showClearAllCookiesDialog = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF171822))
+                    .padding(24.dp)
+            ) {
+                Text("Clear All Data?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "This will log you out of all platforms and clear your browsing data.",
+                    color = Color(0xFFA0A3B5),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { showClearAllCookiesDialog = false },
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancel", color = Color.White)
+                    }
+                    Button(
+                        onClick = {
+                            try {
+                                CookieManager.getInstance().removeAllCookies(null)
+                                CookieManager.getInstance().flush()
+                                WebStorage.getInstance().deleteAllData()
+                            } catch (_: Exception) {}
+                            showClearAllCookiesDialog = false
+                            Toast.makeText(context, "Logged out of all platforms", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF60A5FA)),
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Clear", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    // "Log Out?" Dialog (from strings.xml line 1478)
+    if (showLogoutDialog) {
+        Dialog(onDismissRequest = { showLogoutDialog = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF171822))
+                    .padding(24.dp)
+            ) {
+                Text("Log Out?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "This clears your active WebView sessions while keeping your blocking rules and schedules intact on this phone.",
+                    color = Color(0xFFA0A3B5),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { showLogoutDialog = false },
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancel", color = Color.White)
+                    }
+                    Button(
+                        onClick = {
+                            try {
+                                CookieManager.getInstance().removeAllCookies(null)
+                                CookieManager.getInstance().flush()
+                            } catch (_: Exception) {}
+                            showLogoutDialog = false
                             Toast.makeText(context, "Logged out", Toast.LENGTH_SHORT).show()
-                        }
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF2E2414)),
-                        contentAlignment = Alignment.Center
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFBBF24)),
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = null,
-                            tint = Color(0xFFF59E0B),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text("Log Out", fontSize = 15.sp, color = Color.White)
-                }
-
-                HorizontalDivider(color = Color(0xFF1E2538), thickness = 0.5.dp)
-
-                // Row 4: Delete Account (Red person-remove/trash icon)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            Toast.makeText(context, "Account reset", Toast.LENGTH_SHORT).show()
-                        }
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF381414)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Outlined.PersonRemove,
-                            contentDescription = null,
-                            tint = Color(0xFFEF4444),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Text("Delete Account", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFEF4444))
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text("Permanently remove all data", fontSize = 12.sp, color = Color(0xFF64748B))
+                        Text("Log Out", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
                 }
+            }
+        }
+    }
 
-                HorizontalDivider(color = Color(0xFF1E2538), thickness = 0.5.dp)
+    // "Delete Account?" Dialog with 5-second safety countdown (from strings.xml lines 1449-1453)
+    if (showDeleteAccountDialog) {
+        var deleteCountdown by remember { mutableIntStateOf(5) }
+        LaunchedEffect(Unit) {
+            while (deleteCountdown > 0) {
+                delay(1000L)
+                deleteCountdown--
+            }
+        }
 
-                // Row 5: Encrypted Local Backup (Export / Restore)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+        Dialog(onDismissRequest = { showDeleteAccountDialog = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF171822))
+                    .padding(24.dp)
+            ) {
+                Text("Delete Account?", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "This will permanently delete your account and all associated data on this device. This action cannot be undone.",
+                    color = Color(0xFFA0A3B5),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
-                        onClick = {
-                            pinDialogMode = "export"
-                            showPinDialog = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(9999.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
+                        onClick = { showDeleteAccountDialog = false },
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Outlined.Upload, contentDescription = null, tint = Color(0xFF60A5FA), modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Export .sbk", fontSize = 12.sp, color = Color.White)
+                        Text("Cancel", color = Color.White)
                     }
-
-                    OutlinedButton(
+                    Button(
+                        enabled = deleteCountdown == 0,
                         onClick = {
-                            pinDialogMode = "restore"
-                            showPinDialog = true
+                            scope.launch {
+                                prefsManager.clearAllLocalData()
+                                try {
+                                    CookieManager.getInstance().removeAllCookies(null)
+                                    CookieManager.getInstance().flush()
+                                    WebStorage.getInstance().deleteAllData()
+                                } catch (_: Exception) {}
+                                showDeleteAccountDialog = false
+                                Toast.makeText(context, "All local data deleted", Toast.LENGTH_SHORT).show()
+                                onBack()
+                            }
                         },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(9999.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
+                        colors = ButtonDefaults.buttonColors(containerColor = CrimsonDanger),
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Outlined.Download, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Import .sbk", fontSize = 12.sp, color = Color.White)
+                        Text(
+                            text = if (deleteCountdown > 0) "Delete ($deleteCountdown)" else "Delete Everything",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Edit Local Account Label Dialog
+    if (showEditEmailDialog) {
+        var tempEmail by remember(prefs.accountEmail) { mutableStateOf(prefs.accountEmail) }
+        Dialog(onDismissRequest = { showEditEmailDialog = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF171822))
+                    .padding(24.dp)
+            ) {
+                Text("Account Identifier", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = tempEmail,
+                    onValueChange = { tempEmail = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { showEditEmailDialog = false },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel", color = Color.White)
+                    }
+                    Button(
+                        onClick = {
+                            if (tempEmail.isNotBlank()) {
+                                scope.launch { prefsManager.setAccountEmail(tempEmail.trim()) }
+                            }
+                            showEditEmailDialog = false
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Save")
                     }
                 }
             }

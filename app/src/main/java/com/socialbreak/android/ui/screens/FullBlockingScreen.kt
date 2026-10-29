@@ -1,23 +1,26 @@
 package com.socialbreak.android.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.AllInclusive
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,102 +28,354 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.socialbreak.android.R
+import com.socialbreak.android.data.DomainFilterRepository
 import com.socialbreak.android.data.PreferencesManager
+import com.socialbreak.android.data.SocialBreakPreferences
+import com.socialbreak.android.ui.components.FrictionGauntletDialog
+import com.socialbreak.android.ui.components.SocialAppIcon
 import com.socialbreak.android.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-data class FocusSprintCard(
-    val duration: String,
-    val title: String,
-    val minutes: Int,
-    val gradient: List<Color>
-)
-
-val SPRINT_CARDS = listOf(
-    FocusSprintCard("25 min", "focus sprint", 25, listOf(Color(0xFF382318), Color(0xFF1E1714), Color(0xFF12141A))),
-    FocusSprintCard("1 hr", "study session", 60, listOf(Color(0xFF282838), Color(0xFF181C26), Color(0xFF10141D))),
-    FocusSprintCard("2 hr", "deep work", 120, listOf(Color(0xFF1E2838), Color(0xFF141E28), Color(0xFF0F141E))),
-    FocusSprintCard("4 hr", "half day", 240, listOf(Color(0xFF382A1C), Color(0xFF241C16), Color(0xFF12151C))),
-    FocusSprintCard("8 hr", "work day", 480, listOf(Color(0xFF203224), Color(0xFF14241A), Color(0xFF0E1814)))
-)
-
-data class SelectableApp(
-    val name: String,
-    val packageName: String,
-    val iconColor: Color,
-    val iconEmoji: String
-)
-
-val SOCIAL_APPS = listOf(
-    SelectableApp("Instagram", "com.instagram.android", Color(0xFFE1306C), "📸"),
-    SelectableApp("YouTube", "com.google.android.youtube", Color(0xFFFF0000), "▶"),
-    SelectableApp("TikTok", "com.zhiliaoapp.musically", Color(0xFF000000), "🎵"),
-    SelectableApp("Snapchat", "com.snapchat.android", Color(0xFFFFFC00), "👻"),
-    SelectableApp("X", "com.twitter.android", Color(0xFF000000), "𝕏"),
-    SelectableApp("Facebook", "com.facebook.katana", Color(0xFF1877F2), "f"),
-    SelectableApp("LinkedIn", "com.linkedin.android", Color(0xFF0A66C2), "in")
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun FullBlockingScreen(prefs: PreferencesManager) {
-    val coroutineScope = rememberCoroutineScope()
-    var selectedMinutes by remember { mutableIntStateOf(30) }
-    val focusBlockUntil by prefs.focusBlockUntil.collectAsState(initial = 0L)
-    val blockedPackages by prefs.blockedPackages.collectAsState(initial = emptySet())
+fun FullBlockingScreen(
+    prefs: SocialBreakPreferences,
+    prefsManager: PreferencesManager,
+    onNavigateSettings: () -> Unit = {}
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val palette = SocialTheme.colors
 
-    var showExplainerSheet by remember { mutableStateOf(false) }
-    var showAppPickerSheet by remember { mutableStateOf(false) }
-    var showSessionsMode by remember { mutableStateOf(false) }
+    var showInfoModal by remember { mutableStateOf(false) }
+    var showSocialPickerSheet by remember { mutableStateOf(false) }
+    var showOtherAppsPickerSheet by remember { mutableStateOf(false) }
+    var showStopBlockGauntlet by remember { mutableStateOf(false) }
 
-    val isCurrentlyBlocked = System.currentTimeMillis() < focusBlockUntil
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
+
+    // Live countdown ticker when timed block is active
+    var remainingSeconds by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(prefs.fullBlockActive, prefs.fullBlockEndTimeMillis, prefs.untilStoppedMode) {
+        while (prefs.fullBlockActive && !prefs.untilStoppedMode) {
+            val diff = (prefs.fullBlockEndTimeMillis - System.currentTimeMillis()) / 1000L
+            if (diff <= 0L) {
+                remainingSeconds = 0L
+                prefsManager.stopBlock()
+                break
+            } else {
+                remainingSeconds = diff
+            }
+            delay(1000L)
+        }
+    }
+
+    val isBlockingNow = prefs.fullBlockActive && (prefs.untilStoppedMode || remainingSeconds > 0L)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF000000))
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .background(palette.background)
+            .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
-        // Top Header (Screenshot 4 & 29: Full App Blocking + Info + Gear)
+        // Top Header: "Full App Blocking" + (i) + Settings Gear
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Full App Blocking",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = palette.textPrimary,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = { showExplainerSheet = true },
-                    modifier = Modifier.size(36.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Info",
+                    tint = palette.textSecondary,
+                    modifier = Modifier
+                        .size(21.dp)
+                        .clickable { showInfoModal = true }
+                )
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = "Settings",
+                    tint = palette.textSecondary,
+                    modifier = Modifier
+                        .size(21.dp)
+                        .clickable { onNavigateSettings() }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Top 2 App Category Cards: Social (16 selected) | Other apps (0 selected)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AppCategoryCard(
+                title = "Social",
+                subtitle = "${prefs.blockedSocialApps.size} selected",
+                modifier = Modifier.weight(1f),
+                onClick = { showSocialPickerSheet = true }
+            )
+            AppCategoryCard(
+                title = "Other apps",
+                subtitle = "${prefs.blockedOtherApps.size} selected",
+                modifier = Modifier.weight(1f),
+                onClick = { showOtherAppsPickerSheet = true }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Horizontal Pager: Page 0 = Timer View (View 29), Page 1 = Focus Sprint Sessions (View 4)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) { page ->
+            if (page == 0) {
+                // View 29: Timer View
+                val durationSteps = listOf(5, 10, 15, 20, 25, 30, 45, 60, 90, 120, 180, 240, 480)
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = "Info",
-                        tint = Color(0xFF94A3B8),
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Single Dark Pill Container housing [ ∞   —   30 min   + ]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(62.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color(0xFF15151E))
+                            .padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Circular Infinity Button ("Until stopped")
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (prefs.untilStoppedMode) Color(0xFF6366F1) else Color(0xFF222330)
+                                )
+                                .clickable(enabled = !isBlockingNow) {
+                                    scope.launch {
+                                        prefsManager.setUntilStoppedMode(!prefs.untilStoppedMode)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AllInclusive,
+                                contentDescription = "Until stopped",
+                                tint = if (prefs.untilStoppedMode) Color.White else Color(0xFF9CA3AF),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // Minus Button
+                        IconButton(
+                            enabled = !isBlockingNow,
+                            onClick = {
+                                val curIdx = durationSteps.indexOfFirst { it >= prefs.selectedBlockDurationMinutes }
+                                    .coerceAtLeast(0)
+                                val prev = if (curIdx > 0) durationSteps[curIdx - 1] else durationSteps.first()
+                                scope.launch { prefsManager.setSelectedBlockDuration(prev) }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Remove,
+                                contentDescription = "Less time",
+                                tint = Color(0xFF9CA3AF),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // Duration / Live Countdown Label
+                        val centerDisplay = when {
+                            isBlockingNow && prefs.untilStoppedMode -> "Until stopped"
+                            isBlockingNow -> formatCountdown(remainingSeconds)
+                            prefs.untilStoppedMode -> "Until stopped"
+                            else -> formatDurationMinutes(prefs.selectedBlockDurationMinutes)
+                        }
+
+                        Text(
+                            text = centerDisplay,
+                            color = Color.White,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        // Plus Button
+                        IconButton(
+                            enabled = !isBlockingNow,
+                            onClick = {
+                                val curIdx = durationSteps.indexOfFirst { it >= prefs.selectedBlockDurationMinutes }
+                                val next = if (curIdx in 0 until durationSteps.lastIndex) {
+                                    durationSteps[curIdx + 1]
+                                } else {
+                                    durationSteps.last()
+                                }
+                                scope.launch { prefsManager.setSelectedBlockDuration(next) }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "More time",
+                                tint = Color(0xFF9CA3AF),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // White Pill "Start blocking" / Red Pill "Stop blocking"
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(
+                                if (isBlockingNow) CrimsonDanger else Color(0xFFF4F4F6)
+                            )
+                            .clickable {
+                                if (isBlockingNow) {
+                                    if (prefs.hardModeEnabled) {
+                                        showStopBlockGauntlet = true
+                                    } else {
+                                        scope.launch { prefsManager.stopBlock() }
+                                    }
+                                } else {
+                                    scope.launch {
+                                        prefsManager.startTimedBlock(
+                                            durationMinutes = prefs.selectedBlockDurationMinutes,
+                                            untilStopped = prefs.untilStoppedMode
+                                        )
+                                    }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isBlockingNow) "Stop blocking" else "Start blocking",
+                            color = if (isBlockingNow) Color.White else Color(0xFF111118),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
                 }
-                Spacer(modifier = Modifier.width(4.dp))
-                IconButton(
-                    onClick = { showAppPickerSheet = true },
-                    modifier = Modifier.size(36.dp)
+            } else {
+                // View 4: Focus Sprint Sessions View (Authentic Photo Artwork Cards)
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Customize",
-                        tint = Color(0xFF94A3B8),
-                        modifier = Modifier.size(20.dp)
+                    // Row 1: 25 min Focus sprint | 1 hr Study session
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FocusSprintPhotoCard(
+                            durationLabel = "25 min",
+                            subtitle = "Focus sprint",
+                            drawableRes = R.drawable.preset_focus_sprint,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = {
+                                scope.launch {
+                                    prefsManager.startTimedBlock(25, untilStopped = false)
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            }
+                        )
+                        FocusSprintPhotoCard(
+                            durationLabel = "1 hr",
+                            subtitle = "Study session",
+                            drawableRes = R.drawable.preset_study_session,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = {
+                                scope.launch {
+                                    prefsManager.startTimedBlock(60, untilStopped = false)
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            }
+                        )
+                    }
+
+                    // Row 2: 2 hr Deep work | 4 hr Half day
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FocusSprintPhotoCard(
+                            durationLabel = "2 hr",
+                            subtitle = "Deep work",
+                            drawableRes = R.drawable.preset_deep_work,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = {
+                                scope.launch {
+                                    prefsManager.startTimedBlock(120, untilStopped = false)
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            }
+                        )
+                        FocusSprintPhotoCard(
+                            durationLabel = "4 hr",
+                            subtitle = "Half day",
+                            drawableRes = R.drawable.preset_half_day,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = {
+                                scope.launch {
+                                    prefsManager.startTimedBlock(240, untilStopped = false)
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            }
+                        )
+                    }
+
+                    // Row 3: 8 hr Work day (Full Width Banner)
+                    FocusSprintPhotoCard(
+                        durationLabel = "8 hr",
+                        subtitle = "Work day",
+                        drawableRes = R.drawable.preset_work_day,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(106.dp),
+                        onClick = {
+                            scope.launch {
+                                prefsManager.startTimedBlock(480, untilStopped = false)
+                                pagerState.animateScrollToPage(0)
+                            }
+                        }
                     )
                 }
             }
@@ -128,496 +383,556 @@ fun FullBlockingScreen(prefs: PreferencesManager) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Two Top Square Cards (Screenshot 4 & 29: Social & Other apps)
+        // Bottom Pager Indicator ("• •  swipe for sessions")
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Social Card (Clickable -> Opens Social selection sheet Screenshot 30)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(96.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFF111522))
-                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(18.dp))
-                    .clickable { showAppPickerSheet = true }
-                    .padding(16.dp)
-            ) {
-                Column {
-                    Icon(
-                        Icons.Outlined.Apps,
-                        contentDescription = null,
-                        tint = Color(0xFF64748B),
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = "Social",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "${blockedPackages.size} of 7 on",
-                        fontSize = 12.sp,
-                        color = Color(0xFF94A3B8)
-                    )
-                }
-            }
-
-            // Other apps Card
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(96.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFF111522))
-                    .border(1.dp, Color(0xFF1E2538), RoundedCornerShape(18.dp))
-                    .padding(16.dp)
-            ) {
-                Column {
-                    Icon(
-                        Icons.Outlined.Apps,
-                        contentDescription = null,
-                        tint = Color(0xFF64748B),
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = "Other apps",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "0 apps",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Toggle between Timer View (Screenshot 29) and Focus Sprints View (Screenshot 4)
-        if (!showSessionsMode) {
-            // -------------------------------------------------------------
-            // View A: Giant Timer View (Screenshot 29)
-            // -------------------------------------------------------------
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(30.dp))
-
-                // Giant 30:00 Timer Typography
-                Text(
-                    text = if (isCurrentlyBlocked) "ACTIVE" else "${selectedMinutes}:00",
-                    fontSize = 68.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    letterSpacing = (-0.02).sp
-                )
-
-                Spacer(modifier = Modifier.height(40.dp))
-
-                // Stepper Row: [ ∞ | - | 30 min | + ]
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "∞",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF64748B),
-                        modifier = Modifier
-                            .clickable { selectedMinutes = 120 }
-                            .padding(end = 24.dp)
-                    )
-
-                    // Minus button
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF111522))
-                            .border(1.dp, Color(0xFF1E2538), CircleShape)
-                            .clickable { if (selectedMinutes > 5) selectedMinutes -= 5 },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Remove, contentDescription = "Minus", tint = Color.White, modifier = Modifier.size(16.dp))
-                    }
-
-                    Text(
-                        text = "$selectedMinutes min",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-
-                    // Plus button
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF111522))
-                            .border(1.dp, Color(0xFF1E2538), CircleShape)
-                            .clickable { selectedMinutes += 5 },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Plus", tint = Color.White, modifier = Modifier.size(16.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                // Swipe indicator
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { showSessionsMode = true }
-                ) {
-                    Text(
-                        text = "swipe for sessions",
-                        fontSize = 11.sp,
-                        color = Color(0xFF64748B)
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color.White))
-                    Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF475569)))
-                }
-            }
-        } else {
-            // -------------------------------------------------------------
-            // View B: Focus Sprint Photo Cards View (Screenshot 4)
-            // -------------------------------------------------------------
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // Card 1: 25 min focus sprint (Full width hero card)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(Brush.horizontalGradient(SPRINT_CARDS[0].gradient))
-                        .border(1.dp, if (selectedMinutes == 25) Color(0xFF60A5FA) else Color(0xFF2A221C), RoundedCornerShape(18.dp))
-                        .clickable { selectedMinutes = 25 }
-                        .padding(18.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.align(Alignment.BottomStart),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(text = "25 min", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "focus sprint", fontSize = 12.sp, color = Color(0xFFCBD5E1), modifier = Modifier.padding(bottom = 2.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Row 2: 1 hr study session | 2 hr deep work
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(96.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Brush.verticalGradient(SPRINT_CARDS[1].gradient))
-                            .border(1.dp, if (selectedMinutes == 60) Color(0xFF60A5FA) else Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                            .clickable { selectedMinutes = 60 }
-                            .padding(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.align(Alignment.BottomStart),
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(text = "1 hr", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "study session", fontSize = 11.sp, color = Color(0xFFCBD5E1), modifier = Modifier.padding(bottom = 2.dp))
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(96.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Brush.verticalGradient(SPRINT_CARDS[2].gradient))
-                            .border(1.dp, if (selectedMinutes == 120) Color(0xFF60A5FA) else Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                            .clickable { selectedMinutes = 120 }
-                            .padding(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.align(Alignment.BottomStart),
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(text = "2 hr", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "deep work", fontSize = 11.sp, color = Color(0xFFCBD5E1), modifier = Modifier.padding(bottom = 2.dp))
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Row 3: 4 hr half day | 8 hr work day
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(96.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Brush.verticalGradient(SPRINT_CARDS[3].gradient))
-                            .border(1.dp, if (selectedMinutes == 240) Color(0xFF60A5FA) else Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                            .clickable { selectedMinutes = 240 }
-                            .padding(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.align(Alignment.BottomStart),
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(text = "4 hr", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "half day", fontSize = 11.sp, color = Color(0xFFCBD5E1), modifier = Modifier.padding(bottom = 2.dp))
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(96.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Brush.verticalGradient(SPRINT_CARDS[4].gradient))
-                            .border(1.dp, if (selectedMinutes == 480) Color(0xFF60A5FA) else Color(0xFF1E2538), RoundedCornerShape(16.dp))
-                            .clickable { selectedMinutes = 480 }
-                            .padding(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.align(Alignment.BottomStart),
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(text = "8 hr", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "work day", fontSize = 11.sp, color = Color(0xFFCBD5E1), modifier = Modifier.padding(bottom = 2.dp))
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Dots indicator
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showSessionsMode = false }
-                ) {
-                    Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF475569)))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color.White))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(36.dp))
-
-        // Start 30 min block Button (Screenshot 4 & 29)
-        Button(
-            onClick = {
-                coroutineScope.launch {
-                    if (isCurrentlyBlocked) {
-                        prefs.setFocusBlockUntil(0L)
-                    } else {
-                        val until = System.currentTimeMillis() + (selectedMinutes * 60 * 1000L)
-                        prefs.setFocusBlockUntil(until)
-                    }
-                }
-            },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(9999.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isCurrentlyBlocked) Color(0xFFDC2626) else Color(0xFF161B29)
-            )
+                .clickable {
+                    scope.launch {
+                        pagerState.animateScrollToPage(if (pagerState.currentPage == 0) 1 else 0)
+                    }
+                }
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (isCurrentlyBlocked) "Stop Block" else "Start $selectedMinutes min block",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(if (pagerState.currentPage == 0) palette.textPrimary else Color(0xFF434556))
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(if (pagerState.currentPage == 1) palette.textPrimary else Color(0xFF434556))
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "swipe for sessions",
+                color = Color(0xFF6B6E82),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal
+            )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // Info Explainer Bottom Sheet (Screenshot 3)
-    if (showExplainerSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showExplainerSheet = false },
-            containerColor = Color(0xFF0F131D),
-            dragHandle = null
-        ) {
+    // View 3: Full App Blocking Info Modal
+    if (showInfoModal) {
+        Dialog(onDismissRequest = { showInfoModal = false }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF171822))
                     .padding(24.dp)
             ) {
                 Text(
                     text = "Full App Blocking",
+                    color = Color.White,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "This blocks whole apps outright. A blocked app will not open at all - not the feed, not messages, nothing. The Block Box is the softer version: the app opens, only the short-form inside it is stripped.",
+                    text = "Blocks the apps you pick on this phone. Pick a time or a preset and they won't open until the timer's up.",
+                    color = Color(0xFFA0A3B5),
                     fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    color = Color(0xFFCBD5E1)
+                    lineHeight = 20.sp
                 )
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "With Hard Mode on, switching this off - or switching Hard Mode itself off - takes a four-stage process: type a commitment, answer five maths questions, wait out a 60-second cooldown, then confirm. There is no timer here; off stays off until you turn it back on.",
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    color = Color(0xFFCBD5E1)
-                )
-                Spacer(modifier = Modifier.height(28.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                Spacer(modifier = Modifier.height(22.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF6366F1))
+                        .clickable { showInfoModal = false },
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Got it",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        modifier = Modifier
-                            .clickable { showExplainerSheet = false }
-                            .padding(12.dp)
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
     }
 
-    // Social Apps Selection Bottom Sheet (Screenshot 30)
-    if (showAppPickerSheet) {
+    // View 30: Social App Multi-Select Bottom Sheet
+    if (showSocialPickerSheet) {
+        var tempSelected by remember(prefs.blockedSocialApps) { mutableStateOf(prefs.blockedSocialApps) }
+        val allSocialApps = DomainFilterRepository.SOCIAL_APPS
+
         ModalBottomSheet(
-            onDismissRequest = { showAppPickerSheet = false },
-            containerColor = Color(0xFF0F131D),
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .width(36.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFF334155))
-                )
-            }
+            onDismissRequest = { showSocialPickerSheet = false },
+            containerColor = Color(0xFF14141C),
+            contentColor = TextPrimary,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(horizontal = 22.dp)
+                    .padding(bottom = 28.dp)
             ) {
-                Text(
-                    text = "Social",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Tap an app to include it in blocking.",
-                    fontSize = 13.sp,
-                    color = Color(0xFF94A3B8)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Social",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${tempSelected.size} of ${allSocialApps.size} selected",
+                        color = Color(0xFF8E91A6),
+                        fontSize = 13.sp
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // 3-Column App Icon Grid (Screenshot 30)
-                val rows = listOf(
-                    SOCIAL_APPS.subList(0, 3),
-                    SOCIAL_APPS.subList(3, 6),
-                    SOCIAL_APPS.subList(6, 7)
-                )
-
-                for (row in rows) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround
-                    ) {
-                        for (app in row) {
-                            val isBlocked = blockedPackages.contains(app.packageName)
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .padding(vertical = 12.dp)
-                                    .clickable {
-                                        coroutineScope.launch {
-                                            val current = blockedPackages.toMutableSet()
-                                            if (isBlocked) current.remove(app.packageName)
-                                            else current.add(app.packageName)
-                                            prefs.setBlockedPackages(current)
-                                        }
-                                    }
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(60.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(if (isBlocked) Color(0xFF1E2538) else Color(0xFF151926))
-                                        .border(
-                                            2.dp,
-                                            if (isBlocked) Color(0xFF3B82F6) else Color(0xFF262F44),
-                                            RoundedCornerShape(16.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = app.iconEmoji, fontSize = 24.sp)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(allSocialApps) { app ->
+                        val isChecked = tempSelected.contains(app.id)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    tempSelected = if (isChecked) tempSelected - app.id else tempSelected + app.id
                                 }
-                                Spacer(modifier = Modifier.height(6.dp))
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                SocialAppIcon(
+                                    appId = app.id,
+                                    iconTheme = prefs.iconTheme,
+                                    size = 36.dp,
+                                    cornerRadius = 10.dp
+                                )
                                 Text(
-                                    text = app.name,
-                                    fontSize = 12.sp,
-                                    color = if (isBlocked) Color.White else Color(0xFF94A3B8)
+                                    text = app.displayName,
+                                    color = Color.White,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
-                        }
-                        if (row.size < 3) {
-                            repeat(3 - row.size) {
-                                Spacer(modifier = Modifier.width(60.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isChecked) Color(0xFF818CF8) else Color.Transparent)
+                                    .border(
+                                        width = 1.5.dp,
+                                        color = if (isChecked) Color(0xFF818CF8) else Color(0xFF4A4D62),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isChecked) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = Color(0xFF111118),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF6366F1))
+                        .clickable {
+                            scope.launch { prefsManager.setBlockedSocialApps(tempSelected) }
+                            showSocialPickerSheet = false
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Update blocked apps",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
+    }
+
+    // Other Apps Multi-Select Bottom Sheet with Search
+    if (showOtherAppsPickerSheet) {
+        var searchQuery by remember { mutableStateOf("") }
+        var tempSelectedOther by remember(prefs.blockedOtherApps) { mutableStateOf(prefs.blockedOtherApps) }
+
+        val installedAndCommonApps = remember {
+            val commonApps = listOf(
+                "Chrome",
+                "Netflix",
+                "Prime Video",
+                "Disney+",
+                "Twitch",
+                "Roblox",
+                "Brawl Stars",
+                "Clash Royale",
+                "Chess.com",
+                "Steam",
+                "Amazon Shopping",
+                "Temu",
+                "Shein",
+                "eBay",
+                "Tinder",
+                "Hinge",
+                "Bumble",
+                "Telegram",
+                "WhatsApp"
+            )
+            val pm = context.packageManager
+            val launcherIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
+            val dynamicLabels = try {
+                pm.queryIntentActivities(launcherIntent, 0)
+                    .mapNotNull { it.loadLabel(pm)?.toString() }
+                    .filter { it.isNotBlank() && !it.contains("SocialBreak", ignoreCase = true) }
+            } catch (_: Exception) {
+                emptyList()
+            }
+            (commonApps + dynamicLabels).distinct().sorted()
+        }
+
+        val filteredApps = remember(searchQuery, installedAndCommonApps) {
+            if (searchQuery.isBlank()) installedAndCommonApps
+            else installedAndCommonApps.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { showOtherAppsPickerSheet = false },
+            containerColor = Color(0xFF14141C),
+            contentColor = Color.White,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp)
+                    .padding(bottom = 28.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Other apps",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${tempSelectedOther.size} selected",
+                        color = Color(0xFF8E91A6),
+                        fontSize = 13.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search apps", color = Color(0xFF6E7185), fontSize = 14.sp) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = Color(0xFF8E91A6)
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF6366F1),
+                        unfocusedBorderColor = Color(0xFF282A3A)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(filteredApps) { appLabel ->
+                        val isChecked = tempSelectedOther.contains(appLabel)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    tempSelectedOther = if (isChecked) {
+                                        tempSelectedOther - appLabel
+                                    } else {
+                                        tempSelectedOther + appLabel
+                                    }
+                                }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(RoundedCornerShape(9.dp))
+                                        .background(Color(0xFF232536)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = appLabel.take(1).uppercase(),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                                Text(
+                                    text = appLabel,
+                                    color = Color.White,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isChecked) Color(0xFF818CF8) else Color.Transparent)
+                                    .border(
+                                        width = 1.5.dp,
+                                        color = if (isChecked) Color(0xFF818CF8) else Color(0xFF4A4D62),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isChecked) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = Color(0xFF111118),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF6366F1))
+                        .clickable {
+                            scope.launch { prefsManager.setBlockedOtherApps(tempSelectedOther) }
+                            showOtherAppsPickerSheet = false
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Update blocked apps",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+
+    if (showStopBlockGauntlet) {
+        FrictionGauntletDialog(
+            actionLabel = "full app blocking",
+            onDismiss = { showStopBlockGauntlet = false },
+            onPassed = {
+                showStopBlockGauntlet = false
+                scope.launch { prefsManager.stopBlock() }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AppCategoryCard(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val palette = SocialTheme.colors
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(palette.cardBackground)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = title,
+                color = palette.textPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = subtitle,
+                color = palette.textSecondary,
+                fontSize = 12.sp
+            )
+        }
+        // 2x2 grid of 4 rounded squares matching Views 4, 29, 30
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(13.dp)
+                        .clip(RoundedCornerShape(3.5.dp))
+                        .background(Color(0xFF1D1E2C))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(13.dp)
+                        .clip(RoundedCornerShape(3.5.dp))
+                        .background(Color(0xFF1D1E2C))
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(13.dp)
+                        .clip(RoundedCornerShape(3.5.dp))
+                        .background(Color(0xFF1D1E2C))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(13.dp)
+                        .clip(RoundedCornerShape(3.5.dp))
+                        .background(Color(0xFF1D1E2C))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusSprintPhotoCard(
+    durationLabel: String,
+    subtitle: String,
+    drawableRes: Int,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable { onClick() }
+    ) {
+        Image(
+            painter = painterResource(id = drawableRes),
+            contentDescription = subtitle,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        // Subtle bottom-left vignette for crisp legibility matching View 4
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.55f)
+                        )
+                    )
+                )
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(14.dp)
+        ) {
+            Text(
+                text = durationLabel,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = subtitle,
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal
+            )
+        }
+    }
+}
+
+private fun formatDurationMinutes(minutes: Int): String {
+    return if (minutes < 60) {
+        "$minutes min"
+    } else {
+        val h = minutes / 60
+        val m = minutes % 60
+        if (m == 0) "$h hr" else "${h}h ${m}m"
+    }
+}
+
+private fun formatCountdown(seconds: Long): String {
+    val hrs = seconds / 3600
+    val mins = (seconds % 3600) / 60
+    val secs = seconds % 60
+    return if (hrs > 0) {
+        String.format("%d:%02d:%02d", hrs, mins, secs)
+    } else {
+        String.format("%02d:%02d", mins, secs)
     }
 }

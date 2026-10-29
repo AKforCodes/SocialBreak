@@ -1,7 +1,5 @@
 package com.socialbreak.android.ui.components
 
-import android.os.SystemClock
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -11,219 +9,341 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.socialbreak.android.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
-private const val COMMITMENT_PHRASE = "I am deliberately choosing to break my wellness commitment and waste my attention"
-
 @Composable
 fun FrictionGauntletDialog(
+    actionLabel: String,
     onDismiss: () -> Unit,
-    onSuccess: () -> Unit
+    onPassed: () -> Unit
 ) {
-    var stage by remember { mutableIntStateOf(1) } // 1: Commitment, 2: Math (5 questions), 3: Cooldown, 4: Confirm
-    var commitmentInput by remember { mutableStateOf("") }
+    var stage by remember { mutableIntStateOf(1) }
+    val targetPhrase = "I turned this on when I was thinking straight. Nothing has changed since then except that I want to scroll."
+    var typedText by remember { mutableStateOf("") }
 
-    // Multi-operation Math questions state
+    // Stage 2: 5 mental math problems (a wrong answer resets to Question 1)
     var mathCount by remember { mutableIntStateOf(0) }
-    var numA by remember { mutableIntStateOf(Random.nextInt(6, 15)) }
-    var numB by remember { mutableIntStateOf(Random.nextInt(4, 9)) }
-    var numC by remember { mutableIntStateOf(Random.nextInt(7, 25)) }
-    var expectedAnswer by remember { mutableIntStateOf((numA * numB) - numC) }
-    var mathAnswerInput by remember { mutableStateOf("") }
+    var numA by remember { mutableIntStateOf(Random.nextInt(14, 48)) }
+    var numB by remember { mutableIntStateOf(Random.nextInt(12, 39)) }
+    var mathInput by remember { mutableStateOf("") }
     var mathError by remember { mutableStateOf(false) }
 
-    // Monotonic Hardware Cooldown state
-    var cooldownRemaining by remember { mutableIntStateOf(60) }
-    var cooldownEndRealtime by remember { mutableLongStateOf(0L) }
+    // Stage 3: 60-second unskippable pause (resets if user leaves app)
+    var countdown by remember { mutableIntStateOf(60) }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(stage) {
+    DisposableEffect(lifecycleOwner, stage) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (stage == 3 && event == Lifecycle.Event.ON_PAUSE) {
+                countdown = 60
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(stage, countdown) {
         if (stage == 3) {
-            cooldownEndRealtime = SystemClock.elapsedRealtime() + 60000L
-            while (true) {
-                val remainingMs = cooldownEndRealtime - SystemClock.elapsedRealtime()
-                if (remainingMs <= 0L) {
-                    cooldownRemaining = 0
-                    stage = 4
-                    break
-                }
-                cooldownRemaining = (remainingMs / 1000L).toInt() + 1
-                delay(250L)
+            if (countdown > 0) {
+                delay(1000L)
+                countdown -= 1
+            } else {
+                stage = 4
             }
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 20.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(BgSecondary)
-                .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
+                .background(Color(0xFF14141C))
+                .border(1.dp, Color(0xFF282A3A), RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Hard Mode Gauntlet",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = AccentAmber,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Stage $stage of 4: Anti-Impulse Protection",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
-                )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Step indicator pills
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    for (s in 1..4) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(
+                                    if (s <= stage) Color(0xFFEDA158) else Color(0xFF282A3A)
+                                )
+                        )
+                    }
+                }
 
                 when (stage) {
                     1 -> {
                         Text(
-                            text = "Type this exact sentence to confirm deliberate intent:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "\"$COMMITMENT_PHRASE\"",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextHighlight,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(vertical = 12.dp)
-                        )
-                        OutlinedTextField(
-                            value = commitmentInput,
-                            onValueChange = { commitmentInput = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Type commitment phrase...", color = TextMuted) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AccentBlue,
-                                unfocusedBorderColor = BorderSubtle,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = { stage = 2 },
-                            enabled = commitmentInput.trim() == COMMITMENT_PHRASE,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(9999.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentAmber)
-                        ) {
-                            Text("Next: Mental Clarity Check", color = BgPrimary, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    2 -> {
-                        Text(
-                            text = "Solve 5 mental math questions (${mathCount}/5)",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "($numA × $numB) - $numC = ?",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = TextHighlight,
+                            text = "Type this out, word for word",
+                            color = Color.White,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(vertical = 16.dp)
+                            textAlign = TextAlign.Center
                         )
-                        OutlinedTextField(
-                            value = mathAnswerInput,
-                            onValueChange = {
-                                mathAnswerInput = it
-                                mathError = false
-                            },
-                            isError = mathError,
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Answer", color = TextMuted) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AccentBlue,
-                                unfocusedBorderColor = BorderSubtle,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        if (mathError) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF1D1E2B))
+                                .padding(16.dp)
+                        ) {
                             Text(
-                                text = "Incorrect. Try again.",
-                                color = AccentCoral,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 4.dp)
+                                text = targetPhrase,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFFE5E7EB),
+                                lineHeight = 20.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = {
-                                val entered = mathAnswerInput.trim().toIntOrNull()
-                                if (entered == expectedAnswer) {
-                                    mathCount++
-                                    mathAnswerInput = ""
-                                    mathError = false
-                                    if (mathCount >= 5) {
-                                        stage = 3
-                                    } else {
-                                        numA = Random.nextInt(7, 18)
-                                        numB = Random.nextInt(4, 9)
-                                        numC = Random.nextInt(8, 30)
-                                        expectedAnswer = (numA * numB) - numC
-                                    }
-                                } else {
-                                    mathError = true
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(9999.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                        OutlinedTextField(
+                            value = typedText,
+                            onValueChange = { typedText = it },
+                            placeholder = { Text("Start typing…", color = Color(0xFF6E7185)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFFEDA158),
+                                unfocusedBorderColor = Color(0xFF2E3042)
+                            )
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text("Submit Answer", color = TextHighlight, fontWeight = FontWeight.Bold)
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Keep blocking", color = Color.White)
+                            }
+                            Button(
+                                onClick = { if (typedText.trim() == targetPhrase) stage = 2 },
+                                enabled = typedText.trim() == targetPhrase,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFEDA158),
+                                    contentColor = Color(0xFF1A140E)
+                                ),
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Continue", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
+
+                    2 -> {
+                        Text(
+                            text = "Five questions, no calculator",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Question ${mathCount + 1} of 5. A wrong answer starts them over.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF9CA3AF),
+                            textAlign = TextAlign.Center
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1D1E2B))
+                                .padding(vertical = 20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "$numA + $numB = ?",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        if (mathError) {
+                            Text(
+                                text = "Not right. Back to the first one.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = CrimsonDanger,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        OutlinedTextField(
+                            value = mathInput,
+                            onValueChange = {
+                                mathInput = it.filter { ch -> ch.isDigit() }
+                                mathError = false
+                            },
+                            placeholder = { Text("Your answer", color = Color(0xFF6E7185)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFFEDA158),
+                                unfocusedBorderColor = Color(0xFF2E3042)
+                            )
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Keep blocking", color = Color.White)
+                            }
+                            Button(
+                                onClick = {
+                                    val ans = mathInput.trim().toIntOrNull()
+                                    if (ans == numA + numB) {
+                                        val nextCount = mathCount + 1
+                                        if (nextCount >= 5) {
+                                            stage = 3
+                                        } else {
+                                            mathCount = nextCount
+                                            numA = Random.nextInt(14, 48)
+                                            numB = Random.nextInt(12, 39)
+                                            mathInput = ""
+                                            mathError = false
+                                        }
+                                    } else {
+                                        // Wrong answer resets back to Question 1
+                                        mathCount = 0
+                                        numA = Random.nextInt(14, 48)
+                                        numB = Random.nextInt(12, 39)
+                                        mathInput = ""
+                                        mathError = true
+                                    }
+                                },
+                                enabled = mathInput.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFEDA158),
+                                    contentColor = Color(0xFF1A140E)
+                                ),
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Submit", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
                     3 -> {
                         Text(
-                            text = "Cooldown Period",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "${cooldownRemaining}s",
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentAmber,
-                            modifier = Modifier.padding(vertical = 24.dp)
-                        )
-                        Text(
-                            text = "Take a breath. Waiting out the impulse is part of breaking the dopamine loop. This cooldown is backed by your device's hardware clock.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextMuted,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                    }
-                    4 -> {
-                        Text(
-                            text = "Final Confirmation",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = AccentCoral,
+                            text = "Wait a minute",
+                            color = Color.White,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Are you certain you want to turn off Hard Mode protection?",
+                            text = "Leaving the app starts it over.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(vertical = 16.dp)
+                            color = Color(0xFF9CA3AF),
+                            textAlign = TextAlign.Center
                         )
-                        Button(
-                            onClick = onSuccess,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(9999.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentCoral)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0xFF1D1E2B))
+                                .padding(vertical = 26.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("Disable Hard Mode", color = TextHighlight, fontWeight = FontWeight.Bold)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "$countdown",
+                                    fontSize = 48.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFEDA158)
+                                )
+                                Text(
+                                    text = "seconds left",
+                                    color = Color(0xFF8E91A6),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Keep blocking", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    4 -> {
+                        Text(
+                            text = "This turns blocking off",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "If you continue, $actionLabel turns off and stays off until you turn it back on yourself.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color(0xFF9CA3AF),
+                            textAlign = TextAlign.Center
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = onDismiss,
+                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldSuccess),
+                                modifier = Modifier.weight(1f).height(50.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Keep blocking", color = Color.Black, fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(
+                                onClick = onPassed,
+                                modifier = Modifier.weight(1f).height(50.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Turn blocking off", color = CrimsonDanger, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

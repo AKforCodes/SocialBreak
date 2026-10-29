@@ -24,15 +24,20 @@ class FocusSprintTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         serviceScope.launch {
-            val focusUntil = prefs.focusBlockUntil.first()
+            val currentPrefs = prefs.preferencesFlow.first()
             val now = System.currentTimeMillis()
-            val isActive = now < focusUntil
+            val isActive = currentPrefs.fullBlockActive &&
+                (currentPrefs.untilStoppedMode || now < currentPrefs.fullBlockEndTimeMillis)
 
             qsTile?.apply {
                 state = if (isActive) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
                 label = if (isActive) {
-                    val remainingMins = ((focusUntil - now) / 60000).coerceAtLeast(1)
-                    "Focusing (${remainingMins}m)"
+                    if (currentPrefs.untilStoppedMode) {
+                        "Focusing (∞)"
+                    } else {
+                        val remainingMins = ((currentPrefs.fullBlockEndTimeMillis - now) / 60000).coerceAtLeast(1)
+                        "Focusing (${remainingMins}m)"
+                    }
                 } else {
                     "Focus Sprint"
                 }
@@ -44,21 +49,20 @@ class FocusSprintTileService : TileService() {
     override fun onClick() {
         super.onClick()
         serviceScope.launch {
-            val focusUntil = prefs.focusBlockUntil.first()
+            val currentPrefs = prefs.preferencesFlow.first()
             val now = System.currentTimeMillis()
+            val isActive = currentPrefs.fullBlockActive &&
+                (currentPrefs.untilStoppedMode || now < currentPrefs.fullBlockEndTimeMillis)
 
-            if (now < focusUntil) {
-                // Already focusing, cancel
-                prefs.setFocusBlockUntil(0L)
+            if (isActive && !currentPrefs.hardModeEnabled) {
+                prefs.stopBlock()
                 qsTile?.apply {
                     state = Tile.STATE_INACTIVE
                     label = "Focus Sprint"
                     updateTile()
                 }
-            } else {
-                // Start 25 minute sprint
-                val sprintUntil = now + (25 * 60 * 1000L)
-                prefs.setFocusBlockUntil(sprintUntil)
+            } else if (!isActive) {
+                prefs.startTimedBlock(25, untilStopped = false)
                 qsTile?.apply {
                     state = Tile.STATE_ACTIVE
                     label = "Focusing (25m)"
@@ -83,7 +87,7 @@ class SleepModeTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         serviceScope.launch {
-            val isSleep = prefs.sleepModeEnabled.first()
+            val isSleep = prefs.preferencesFlow.first().sleepModeEnabled
             qsTile?.apply {
                 state = if (isSleep) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
                 label = if (isSleep) "Sleep Mode: On" else "Sleep Mode"
@@ -95,8 +99,9 @@ class SleepModeTileService : TileService() {
     override fun onClick() {
         super.onClick()
         serviceScope.launch {
-            val isSleep = prefs.sleepModeEnabled.first()
-            val newState = !isSleep
+            val currentPrefs = prefs.preferencesFlow.first()
+            if (currentPrefs.sleepModeEnabled && currentPrefs.hardModeEnabled) return@launch
+            val newState = !currentPrefs.sleepModeEnabled
             prefs.setSleepMode(newState)
 
             qsTile?.apply {
@@ -122,7 +127,7 @@ class HardModeTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         serviceScope.launch {
-            val isHard = prefs.hardModeEnabled.first()
+            val isHard = prefs.preferencesFlow.first().hardModeEnabled
             qsTile?.apply {
                 state = if (isHard) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
                 label = if (isHard) "Hard Mode: Locked" else "Hard Mode: Off"
@@ -133,9 +138,8 @@ class HardModeTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        // Hard mode cannot be toggled off directly from tile without gauntlet
         serviceScope.launch {
-            val isHard = prefs.hardModeEnabled.first()
+            val isHard = prefs.preferencesFlow.first().hardModeEnabled
             if (!isHard) {
                 prefs.setHardMode(true)
                 qsTile?.apply {

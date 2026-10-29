@@ -1,6 +1,7 @@
 package com.socialbreak.android.data
 
 import android.content.Context
+import android.util.Base64
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,107 +21,125 @@ object LocalBackupManager {
     private const val IV_LENGTH = 12
     private const val SALT_LENGTH = 16
 
-    suspend fun createEncryptedBackup(context: Context, prefs: PreferencesManager, pin: String): File {
+    fun exportEncryptedBackup(prefs: SocialBreakPreferences, passphrase: String): String {
         val rootJson = JSONObject().apply {
-            put("version", 1)
+            put("version", 2)
             put("timestamp", System.currentTimeMillis())
-            put("sleepMode", prefs.sleepModeEnabled.first())
-            put("bedtimeHour", prefs.bedtimeHour.first())
-            put("bedtimeMinute", prefs.bedtimeMinute.first())
-            put("wakeHour", prefs.wakeHour.first())
-            put("wakeMinute", prefs.wakeMinute.first())
-            put("windDownMinutes", prefs.windDownMinutes.first())
-            put("hardMode", prefs.hardModeEnabled.first())
+            put("sleepMode", prefs.sleepModeEnabled)
+            put("bedtimeHour", prefs.bedtimeHour)
+            put("bedtimeMinute", prefs.bedtimeMinute)
+            put("wakeHour", prefs.wakeHour)
+            put("wakeMinute", prefs.wakeMinute)
+            put("beforeBedWindDownEnabled", prefs.beforeBedWindDownEnabled)
+            put("beforeBedWindDownMinutes", prefs.beforeBedWindDownMinutes)
+            put("afterWakeWindDownEnabled", prefs.afterWakeWindDownEnabled)
+            put("afterWakeWindDownMinutes", prefs.afterWakeWindDownMinutes)
+            put("hardMode", prefs.hardModeEnabled)
+            put("themeMode", prefs.themeMode)
+            put("iconTheme", prefs.iconTheme)
+            put("navigationStyle", prefs.navigationStyle)
+            put("globalGrayscale", prefs.globalGrayscale)
+            put("dailyGoalMinutes", prefs.dailyGoalMinutes)
 
             val blockedArray = JSONArray()
-            prefs.blockedPackages.first().forEach { blockedArray.put(it) }
-            put("blockedPackages", blockedArray)
+            prefs.blockedSocialApps.forEach { blockedArray.put(it) }
+            put("blockedSocialApps", blockedArray)
 
-            put("webAdult", prefs.webBlockingAdult.first())
-            put("webCasinos", prefs.webBlockingCasinos.first())
-            put("webGaming", prefs.webBlockingGaming.first())
-            put("webBetting", prefs.webBlockingBetting.first())
-            put("webSocial", prefs.webBlockingSocial.first())
-
-            val chipsArray = JSONArray()
-            prefs.reachableSocialChips.first().forEach { chipsArray.put(it) }
-            put("reachableChips", chipsArray)
-
-            put("blocksLanded", prefs.todayBlocksLanded.first())
-            put("strippedCount", prefs.todayStrippedCount.first())
+            put("webAdult", prefs.webBlockAdultContent)
+            put("webCasinos", prefs.webBlockOnlineCasinos)
+            put("webGaming", prefs.webBlockCasualGaming)
+            put("webBetting", prefs.webBlockSportsBetting)
+            put("webSocial", prefs.webBlockSocialApps)
         }
 
         val plainBytes = rootJson.toString().toByteArray(Charsets.UTF_8)
-
-        // Generate salt & IV
         val random = SecureRandom()
-        val salt = ByteArray(SALT_LENGTH)
-        random.nextBytes(salt)
-        val iv = ByteArray(IV_LENGTH)
-        random.nextBytes(iv)
+        val salt = ByteArray(SALT_LENGTH).also { random.nextBytes(it) }
+        val iv = ByteArray(IV_LENGTH).also { random.nextBytes(it) }
 
-        // Derive key from PIN
-        val spec = PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
+        val spec = PBEKeySpec(passphrase.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val keyBytes = factory.generateSecret(spec).encoded
-        val secretKey = SecretKeySpec(keyBytes, "AES")
+        val secretKey = SecretKeySpec(factory.generateSecret(spec).encoded, "AES")
 
-        // Encrypt with AES-GCM
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
         val cipherText = cipher.doFinal(plainBytes)
 
-        // Write to local backup file: salt + iv + cipherText
-        val backupFile = File(context.getExternalFilesDir(null), "socialbreak_backup.enc")
-        backupFile.outputStream().use { os ->
-            os.write(salt)
-            os.write(iv)
-            os.write(cipherText)
-        }
+        val combined = ByteArray(salt.size + iv.size + cipherText.size)
+        System.arraycopy(salt, 0, combined, 0, salt.size)
+        System.arraycopy(iv, 0, combined, salt.size, iv.size)
+        System.arraycopy(cipherText, 0, combined, salt.size + iv.size, cipherText.size)
 
-        return backupFile
+        return Base64.encodeToString(combined, Base64.NO_WRAP)
     }
 
-    suspend fun restoreEncryptedBackup(context: Context, prefs: PreferencesManager, pin: String): Boolean {
-        val backupFile = File(context.getExternalFilesDir(null), "socialbreak_backup.enc")
-        if (!backupFile.exists()) return false
-
+    suspend fun importEncryptedBackup(
+        base64Payload: String,
+        passphrase: String,
+        prefsManager: PreferencesManager
+    ): Boolean {
         return try {
-            val allBytes = backupFile.readBytes()
+            val allBytes = Base64.decode(base64Payload, Base64.NO_WRAP)
             if (allBytes.size < SALT_LENGTH + IV_LENGTH) return false
 
             val salt = allBytes.copyOfRange(0, SALT_LENGTH)
             val iv = allBytes.copyOfRange(SALT_LENGTH, SALT_LENGTH + IV_LENGTH)
             val cipherText = allBytes.copyOfRange(SALT_LENGTH + IV_LENGTH, allBytes.size)
 
-            val spec = PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
+            val spec = PBEKeySpec(passphrase.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
             val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-            val keyBytes = factory.generateSecret(spec).encoded
-            val secretKey = SecretKeySpec(keyBytes, "AES")
+            val secretKey = SecretKeySpec(factory.generateSecret(spec).encoded, "AES")
 
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
             val plainBytes = cipher.doFinal(cipherText)
 
             val json = JSONObject(String(plainBytes, Charsets.UTF_8))
-
-            prefs.setSleepMode(json.optBoolean("sleepMode", false))
-            prefs.setSleepSchedule(
+            prefsManager.setSleepMode(json.optBoolean("sleepMode", false))
+            prefsManager.updateSleepSchedule(
                 json.optInt("bedtimeHour", 23),
                 json.optInt("bedtimeMinute", 0),
                 json.optInt("wakeHour", 7),
                 json.optInt("wakeMinute", 0)
             )
-            prefs.setHardMode(json.optBoolean("hardMode", false))
-            prefs.setWebFilter("adult", json.optBoolean("webAdult", false))
-            prefs.setWebFilter("casinos", json.optBoolean("webCasinos", false))
-            prefs.setWebFilter("gaming", json.optBoolean("webGaming", false))
-            prefs.setWebFilter("betting", json.optBoolean("webBetting", false))
-            prefs.setWebFilter("social", json.optBoolean("webSocial", false))
+            prefsManager.setBeforeBedWindDown(
+                json.optBoolean("beforeBedWindDownEnabled", false),
+                json.optInt("beforeBedWindDownMinutes", 30)
+            )
+            prefsManager.setAfterWakeWindDown(
+                json.optBoolean("afterWakeWindDownEnabled", false),
+                json.optInt("afterWakeWindDownMinutes", 30)
+            )
+            prefsManager.setHardMode(json.optBoolean("hardMode", false))
+            prefsManager.setThemeMode(json.optString("themeMode", "dark"))
+            prefsManager.setIconTheme(json.optString("iconTheme", "painted"))
+            prefsManager.setNavigationStyle(json.optString("navigationStyle", "bar"))
+            prefsManager.setGlobalGrayscale(json.optBoolean("globalGrayscale", false))
+            prefsManager.setDailyGoalMinutes(json.optInt("dailyGoalMinutes", 30))
 
+            prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_ADULT, json.optBoolean("webAdult", false))
+            prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_CASINOS, json.optBoolean("webCasinos", false))
+            prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_GAMING, json.optBoolean("webGaming", false))
+            prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_SPORTS, json.optBoolean("webBetting", false))
+            prefsManager.setBooleanPreference(PreferencesManager.WEB_BLOCK_SOCIAL, json.optBoolean("webSocial", false))
             true
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
+    }
+
+    suspend fun createEncryptedBackup(context: Context, prefsManager: PreferencesManager, pin: String): File {
+        val current = prefsManager.preferencesFlow.first()
+        val encoded = exportEncryptedBackup(current, pin)
+        val backupFile = File(context.getExternalFilesDir(null), "socialbreak_backup.enc")
+        backupFile.writeText(encoded, Charsets.UTF_8)
+        return backupFile
+    }
+
+    suspend fun restoreEncryptedBackup(context: Context, prefsManager: PreferencesManager, pin: String): Boolean {
+        val backupFile = File(context.getExternalFilesDir(null), "socialbreak_backup.enc")
+        if (!backupFile.exists()) return false
+        val encoded = backupFile.readText(Charsets.UTF_8).trim()
+        return importEncryptedBackup(encoded, pin, prefsManager)
     }
 }

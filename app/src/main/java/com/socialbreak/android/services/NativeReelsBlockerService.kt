@@ -15,7 +15,6 @@ class NativeReelsBlockerService : AccessibilityService() {
     private lateinit var prefs: PreferencesManager
 
     companion object {
-        // Reverse-engineered view IDs from classes.dex
         private val INSTAGRAM_VIEW_IDS = listOf(
             "com.instagram.android:id/clips_viewer_container",
             "com.instagram.android:id/clips_viewer_video_layout",
@@ -28,7 +27,6 @@ class NativeReelsBlockerService : AccessibilityService() {
             "com.google.android.youtube:id/reel_recycler"
         )
 
-        // Reverse-engineered multi-lingual friend-DM breadcrumb tokens
         private val FRIEND_CONTENT_TOKENS = listOf(
             "Back to chat",
             "Reply privately",
@@ -66,8 +64,10 @@ class NativeReelsBlockerService : AccessibilityService() {
             "com.zhiliaoapp.musically", "com.ss.android.ugc.trill" -> {
                 val rootNode = rootInActiveWindow ?: return
                 serviceScope.launch {
-                    val hardMode = prefs.hardModeEnabled.first()
-                    inspectAndInterceptReels(rootNode, packageName, hardMode)
+                    val currentPrefs = prefs.preferencesFlow.first()
+                    if (currentPrefs.nativeReelsBlockerEnabled) {
+                        inspectAndInterceptReels(rootNode, packageName, currentPrefs.hardModeEnabled)
+                    }
                 }
             }
         }
@@ -109,20 +109,16 @@ class NativeReelsBlockerService : AccessibilityService() {
                 }
             }
             "com.zhiliaoapp.musically", "com.ss.android.ugc.trill" -> {
-                // TikTok is entirely short-form
                 isShortFormContainer = true
             }
         }
 
         if (isShortFormContainer) {
-            // Check if this is a Friend DM clip exception
             val isFriendClip = containsFriendDMBreadcrumbs(root)
-
             if (!isFriendClip || hardMode) {
-                // Algorithmic doomscroll trap detected: strike with Back navigation
                 performGlobalAction(GLOBAL_ACTION_BACK)
                 serviceScope.launch {
-                    prefs.incrementStrippedCount()
+                    prefs.incrementBlocksLanded()
                 }
             }
         }

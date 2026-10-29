@@ -8,6 +8,7 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import com.socialbreak.android.MainActivity
+import com.socialbreak.android.R
 
 object AppShortcutManager {
 
@@ -22,7 +23,7 @@ object AppShortcutManager {
         val focusShortcut = ShortcutInfo.Builder(context, "shortcut_focus_25")
             .setShortLabel("25m Focus")
             .setLongLabel("Start 25m Focus Sprint")
-            .setIcon(Icon.createWithResource(context, android.R.drawable.ic_lock_idle_lock))
+            .setIcon(Icon.createWithResource(context, R.drawable.sociallite_logo))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_START_FOCUS_25
@@ -33,8 +34,8 @@ object AppShortcutManager {
 
         val instagramShortcut = ShortcutInfo.Builder(context, "shortcut_clean_ig")
             .setShortLabel("Clean Instagram")
-            .setLongLabel("Open Clean Instagram DMs")
-            .setIcon(Icon.createWithResource(context, android.R.drawable.ic_dialog_email))
+            .setLongLabel("Open Instagram in SocialLite")
+            .setIcon(Icon.createWithResource(context, R.drawable.ic_instagram_painted))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
                     action = Intent.ACTION_VIEW
@@ -46,8 +47,8 @@ object AppShortcutManager {
 
         val youtubeShortcut = ShortcutInfo.Builder(context, "shortcut_clean_yt")
             .setShortLabel("Clean YouTube")
-            .setLongLabel("Open Clean YouTube Search")
-            .setIcon(Icon.createWithResource(context, android.R.drawable.ic_media_play))
+            .setLongLabel("Open YouTube in SocialLite")
+            .setIcon(Icon.createWithResource(context, R.drawable.ic_youtube_painted))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
                     action = Intent.ACTION_VIEW
@@ -59,8 +60,8 @@ object AppShortcutManager {
 
         val statsShortcut = ShortcutInfo.Builder(context, "shortcut_stats")
             .setShortLabel("Today Stats")
-            .setLongLabel("View Today's Shield Metrics")
-            .setIcon(Icon.createWithResource(context, android.R.drawable.ic_menu_sort_by_size))
+            .setLongLabel("View Today's Metrics")
+            .setIcon(Icon.createWithResource(context, R.drawable.sociallite_logo))
             .setIntent(
                 Intent(context, MainActivity::class.java).apply {
                     action = ACTION_OPEN_ANALYTICS
@@ -71,7 +72,7 @@ object AppShortcutManager {
 
         try {
             shortcutManager.dynamicShortcuts = listOf(focusShortcut, instagramShortcut, youtubeShortcut, statsShortcut)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Ignore if launcher limits shortcuts
         }
     }

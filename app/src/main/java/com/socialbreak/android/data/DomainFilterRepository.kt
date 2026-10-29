@@ -2,6 +2,25 @@ package com.socialbreak.android.data
 
 object DomainFilterRepository {
 
+    val SOCIAL_SITES = listOf(
+        "bereal.com",
+        "discord.com",
+        "facebook.com",
+        "instagram.com",
+        "linkedin.com",
+        "messenger.com",
+        "pinterest.com",
+        "reddit.com",
+        "snapchat.com",
+        "threads.net",
+        "tiktok.com",
+        "tumblr.com",
+        "twitter.com",
+        "vsco.co",
+        "x.com",
+        "youtube.com"
+    ) // 16 sites
+
     val CASUAL_GAMING_PORTALS = listOf(
         "1001games.com",
         "addictinggames.com",
@@ -24,16 +43,25 @@ object DomainFilterRepository {
         "silvergames.com",
         "twitch.tv",
         "y8.com"
-    )
+    ) // 21 sites
 
     val ONLINE_CASINOS = listOf(
         "888casino.com",
         "888poker.com",
+        "betfair.com",
+        "bitstarz.com",
+        "bovada.lv",
         "casino.com",
+        "casinodays.com",
         "casumo.com",
+        "chumbacasino.com",
+        "duelbits.com",
+        "fortunejack.com",
         "goldenlionwins.com",
+        "ignitioncasino.eu",
         "jackpotcity.com",
         "leovegas.com",
+        "luckylandslots.com",
         "megaways.casino",
         "mrgreen.com",
         "partycasino.com",
@@ -43,17 +71,23 @@ object DomainFilterRepository {
         "royalpanda.com",
         "spincasino.com",
         "stake.com"
-    )
+    ).take(24) // 24 sites
 
     val SPORTS_BETTING = listOf(
         "bet365.com",
         "betfred.com",
         "betmgm.com",
+        "betonline.ag",
+        "betrivers.com",
         "betway.com",
         "bwin.com",
         "caesars.com",
+        "coral.co.uk",
         "draftkings.com",
+        "espnbet.com",
         "fanduel.com",
+        "fliff.com",
+        "hardrock.bet",
         "ladbrokes.com",
         "paddypower.com",
         "pinnacle.com",
@@ -63,7 +97,7 @@ object DomainFilterRepository {
         "underdogfantasy.com",
         "unibet.com",
         "williamhill.com"
-    )
+    ).take(22) // 22 sites
 
     val ADULT_CONTENT = listOf(
         "adulttime.com",
@@ -91,7 +125,7 @@ object DomainFilterRepository {
         "xnxx.com",
         "xvideos.com",
         "youporn.com"
-    )
+    ) // 25 sites
 
     data class SocialAppMeta(
         val id: String,
@@ -102,7 +136,7 @@ object DomainFilterRepository {
     )
 
     val SOCIAL_APPS = listOf(
-        SocialAppMeta("instagram", "Instagram", listOf("instagram.com"), "com.instagram.android", "https://www.instagram.com/direct/inbox/"),
+        SocialAppMeta("instagram", "Instagram", listOf("instagram.com"), "com.instagram.android", "https://www.instagram.com/"),
         SocialAppMeta("tiktok", "TikTok", listOf("tiktok.com", "tiktokcdn.com", "tiktokcdn-us.com", "tiktokstaticb.com"), "com.zhiliaoapp.musically", "https://www.tiktok.com/messages"),
         SocialAppMeta("facebook", "Facebook", listOf("facebook.com", "fb.me", "fb.gg"), "com.facebook.katana", "https://m.facebook.com/messages/"),
         SocialAppMeta("youtube", "YouTube", listOf("youtube.com"), "com.google.android.youtube", "https://m.youtube.com"),
@@ -119,4 +153,36 @@ object DomainFilterRepository {
         SocialAppMeta("vsco", "VSCO", listOf("vsco.co"), "com.vsco.cam", "https://vsco.co"),
         SocialAppMeta("tumblr", "Tumblr", listOf("tumblr.com"), "com.tumblr", "https://www.tumblr.com")
     )
+
+    fun isDomainBlocked(
+        host: String,
+        blockSocial: Boolean,
+        blockAdult: Boolean,
+        blockCasinos: Boolean,
+        blockGaming: Boolean,
+        blockSports: Boolean,
+        customDomains: Set<String>,
+        whitelistedDomains: Set<String>
+    ): Boolean {
+        val cleanHost = host.trim().lowercase().removePrefix("www.").removeSuffix(".")
+        if (cleanHost.isEmpty()) return false
+
+        // Check if whitelisted by user chip toggle
+        if (whitelistedDomains.any { cleanHost == it || cleanHost.endsWith(".$it") }) {
+            return false
+        }
+
+        val activeBlockedList = buildList {
+            if (blockSocial) addAll(SOCIAL_SITES)
+            if (blockAdult) addAll(ADULT_CONTENT)
+            if (blockCasinos) addAll(ONLINE_CASINOS)
+            if (blockGaming) addAll(CASUAL_GAMING_PORTALS)
+            if (blockSports) addAll(SPORTS_BETTING)
+            addAll(customDomains.map { it.trim().lowercase().removePrefix("www.") })
+        }
+
+        return activeBlockedList.any { domain ->
+            domain.isNotEmpty() && (cleanHost == domain || cleanHost.endsWith(".$domain"))
+        }
+    }
 }

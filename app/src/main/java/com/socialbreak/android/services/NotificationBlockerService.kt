@@ -69,6 +69,8 @@ class NotificationBlockerService : NotificationListenerService() {
         val redirectTarget = MONITORED_PACKAGES[packageName] ?: return
 
         serviceScope.launch {
+            val currentPrefs = prefs.preferencesFlow.first()
+            if (!currentPrefs.interceptNotifications) return@launch
             val extras = sbn.notification?.extras ?: return@launch
             val title = extras.getString("android.title") ?: extras.getString("android.conversationTitle") ?: "New Message"
             val text = extras.getCharSequence("android.text")?.toString() ?: extras.getCharSequence("android.bigText")?.toString() ?: "Tap to open in clean chat"

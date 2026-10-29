@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -18,7 +19,6 @@ import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,14 +34,13 @@ class BlockedAppActivity : ComponentActivity() {
 
         val platform = intent.getStringExtra("platform") ?: "app"
         val reason = intent.getStringExtra("reason") ?: "sleep_block"
-        val packageName = intent.getStringExtra("package_name") ?: ""
 
         val platformDisplayName = when (platform.lowercase()) {
             "instagram" -> "Instagram"
             "youtube" -> "YouTube"
             "tiktok" -> "TikTok"
             "snapchat" -> "Snapchat"
-            "twitter" -> "X (Twitter)"
+            "twitter", "x" -> "X"
             "facebook" -> "Facebook"
             "linkedin" -> "LinkedIn"
             else -> platform.replaceFirstChar { it.uppercase() }
@@ -49,16 +48,16 @@ class BlockedAppActivity : ComponentActivity() {
 
         val reasonText = when (reason) {
             "sleep_block" -> "Sleep Mode is Active"
-            "focus_block" -> "Focus Sprint in Progress"
+            "focus_block" -> "Full App Blocking Active"
             "limit_block" -> "Daily App Limit Reached"
-            else -> "App is Blocked by SocialBreak"
+            else -> "Paused by SocialLite"
         }
 
         setContent {
             SocialBreakTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = BgPrimary
+                    color = PitchBlack
                 ) {
                     Column(
                         modifier = Modifier
@@ -67,19 +66,18 @@ class BlockedAppActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // Shield Lock Icon
                         Box(
                             modifier = Modifier
                                 .size(96.dp)
                                 .clip(CircleShape)
-                                .background(BgSecondary)
-                                .border(1.5.dp, BorderSubtle, CircleShape),
+                                .background(SlateCardSurface)
+                                .border(1.5.dp, SlateBorder, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = AccentAmber,
+                                tint = AmberGold,
                                 modifier = Modifier.size(44.dp)
                             )
                         }
@@ -90,22 +88,21 @@ class BlockedAppActivity : ComponentActivity() {
                             text = "$platformDisplayName is Paused",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextHighlight,
+                            color = TextPrimary,
                             textAlign = TextAlign.Center
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Reason Badge
                         Surface(
                             shape = RoundedCornerShape(9999.dp),
-                            color = BgTertiary,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+                            color = SlateCardElevated,
+                            border = BorderStroke(1.dp, SlateBorder)
                         ) {
                             Text(
                                 text = reasonText,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = AccentAmber,
+                                color = AmberGold,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                             )
                         }
@@ -113,7 +110,7 @@ class BlockedAppActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "SocialBreak is protecting your attention. You can still use the distraction-free WebApp to check direct messages without infinite reels or algorithmic loops.",
+                            text = "SocialLite is protecting your attention. You can still use the distraction-free WebApp inside SocialLite to check messages without infinite Reels or Shorts.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary,
                             textAlign = TextAlign.Center,
@@ -122,7 +119,6 @@ class BlockedAppActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(36.dp))
 
-                        // Primary CTA: Open Clean WebApp
                         Button(
                             onClick = {
                                 val openIntent = Intent(this@BlockedAppActivity, MainActivity::class.java).apply {
@@ -137,11 +133,11 @@ class BlockedAppActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .height(52.dp),
                             shape = RoundedCornerShape(9999.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = IndigoActive)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Open in Clean WebApp",
+                                    text = "Open in SocialLite",
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White
                                 )
@@ -157,7 +153,6 @@ class BlockedAppActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Secondary CTA: Home
                         OutlinedButton(
                             onClick = {
                                 val homeIntent = Intent(Intent.ACTION_MAIN).apply {
@@ -172,7 +167,7 @@ class BlockedAppActivity : ComponentActivity() {
                                 .height(50.dp),
                             shape = RoundedCornerShape(9999.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+                            border = BorderStroke(1.dp, SlateBorder)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
