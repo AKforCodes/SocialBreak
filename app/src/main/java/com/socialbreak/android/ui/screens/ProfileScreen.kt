@@ -48,6 +48,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.socialbreak.android.BuildConfig
 import com.socialbreak.android.R
 import com.socialbreak.android.data.PreferencesManager
 import com.socialbreak.android.data.SocialBreakPreferences
@@ -578,10 +579,27 @@ fun ProfileScreen(
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFF1D1E2B))
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Version", color = Color(0xFF9CA3AF), fontSize = 14.sp)
-                    Text("3.0.1 (100% On-Device)", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("v${BuildConfig.VERSION_NAME} (100% On-Device)", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF1D1E2B))
+                        .clickable {
+                            showAboutSheet = false
+                            onOpenSettings()
+                        }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Check for Software Updates", color = Color(0xFF818CF8), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFF818CF8))
                 }
                 Column(
                     modifier = Modifier

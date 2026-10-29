@@ -740,9 +740,13 @@ fun WebAppsScreen(
 
                     WebAppToggleRow(
                         label = "Block Stories",
+                        subtitle = "Hides stories tray and blocks native Instagram stories viewer",
                         checked = prefs.igBlockStories,
                         onCheckedChange = {
-                            scope.launch { prefsManager.setBooleanPreference(PreferencesManager.IG_BLOCK_STORIES, it) }
+                            scope.launch {
+                                prefsManager.setBooleanPreference(PreferencesManager.IG_BLOCK_STORIES, it)
+                                prefsManager.setBooleanPreference(PreferencesManager.NATIVE_BLOCK_IG_STORIES, it)
+                            }
                         }
                     )
                     WebAppToggleRow(
@@ -754,16 +758,24 @@ fun WebAppsScreen(
                     )
                     WebAppToggleRow(
                         label = "Block Feed",
+                        subtitle = "Blocks feed posts and exits native Instagram home feed",
                         checked = prefs.igBlockFeed,
                         onCheckedChange = {
-                            scope.launch { prefsManager.setBooleanPreference(PreferencesManager.IG_BLOCK_FEED, it) }
+                            scope.launch {
+                                prefsManager.setBooleanPreference(PreferencesManager.IG_BLOCK_FEED, it)
+                                prefsManager.setBooleanPreference(PreferencesManager.NATIVE_BLOCK_IG_FEED, it)
+                            }
                         }
                     )
                     WebAppToggleRow(
                         label = "DMs Only",
+                        subtitle = "Redirects outside direct messages both in SocialBreak and native Instagram",
                         checked = prefs.igDmsOnly,
                         onCheckedChange = {
-                            scope.launch { prefsManager.setBooleanPreference(PreferencesManager.IG_DMS_ONLY, it) }
+                            scope.launch {
+                                prefsManager.setBooleanPreference(PreferencesManager.IG_DMS_ONLY, it)
+                                prefsManager.setBooleanPreference(PreferencesManager.NATIVE_IG_DMS_ONLY, it)
+                            }
                         }
                     )
                     WebAppToggleRow(
@@ -869,9 +881,13 @@ fun WebAppsScreen(
 
                     WebAppToggleRow(
                         label = "Block Shorts",
+                        subtitle = "Blocks Shorts in SocialBreak and native YouTube app",
                         checked = prefs.ytBlockShorts,
                         onCheckedChange = {
-                            scope.launch { prefsManager.setBooleanPreference(PreferencesManager.YT_BLOCK_SHORTS, it) }
+                            scope.launch {
+                                prefsManager.setBooleanPreference(PreferencesManager.YT_BLOCK_SHORTS, it)
+                                prefsManager.setBooleanPreference(PreferencesManager.NATIVE_BLOCK_YT_SHORTS, it)
+                            }
                         }
                     )
                     WebAppToggleRow(
@@ -893,9 +909,13 @@ fun WebAppsScreen(
                     )
                     WebAppToggleRow(
                         label = "Search Only Mode",
+                        subtitle = "Hides recommendation feed and redirects to search in YouTube",
                         checked = prefs.ytSearchOnlyMode,
                         onCheckedChange = {
-                            scope.launch { prefsManager.setBooleanPreference(PreferencesManager.YT_SEARCH_ONLY, it) }
+                            scope.launch {
+                                prefsManager.setBooleanPreference(PreferencesManager.YT_SEARCH_ONLY, it)
+                                prefsManager.setBooleanPreference(PreferencesManager.NATIVE_YT_SEARCH_ONLY, it)
+                            }
                         }
                     )
                     WebAppToggleRow(

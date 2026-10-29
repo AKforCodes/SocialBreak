@@ -82,9 +82,23 @@ data class SocialBreakPreferences(
     // Native App Surface Interception
     val nativeReelsBlockerEnabled: Boolean = true,
     val nativeBlockIgReels: Boolean = true,
+    val nativeBlockIgExplore: Boolean = true,
+    val nativeBlockIgStories: Boolean = false,
+    val nativeBlockIgFeed: Boolean = false,
+    val nativeIgDmsOnlyMode: Boolean = false,
     val nativeBlockYtShorts: Boolean = true,
+    val nativeYtSearchOnlyMode: Boolean = false,
     val nativeBlockTtForYou: Boolean = true,
     val nativeBlockSnapSpotlight: Boolean = true,
+    val nativeBlockFacebookReels: Boolean = true,
+    val nativeFbDmsOnlyMode: Boolean = false,
+    val nativeBlockXVideo: Boolean = true,
+    val nativeXDmsOnlyMode: Boolean = false,
+    val nativeAllowFriendReels: Boolean = true,
+
+    // App Updates
+    val autoCheckUpdates: Boolean = true,
+    val lastUpdateCheckTs: Long = 0L,
 
     // Per-App Daily Short-Form Allowance (minutes, 0 = No limit)
     val appDailyLimitsRaw: String = "",
@@ -224,9 +238,22 @@ class PreferencesManager(private val context: Context) {
 
         val NATIVE_REELS_BLOCKER_ENABLED = booleanPreferencesKey("native_reels_blocker_enabled")
         val NATIVE_BLOCK_IG_REELS = booleanPreferencesKey("native_block_ig_reels")
+        val NATIVE_BLOCK_IG_EXPLORE = booleanPreferencesKey("native_block_ig_explore")
+        val NATIVE_BLOCK_IG_STORIES = booleanPreferencesKey("native_block_ig_stories")
+        val NATIVE_BLOCK_IG_FEED = booleanPreferencesKey("native_block_ig_feed")
+        val NATIVE_IG_DMS_ONLY = booleanPreferencesKey("native_ig_dms_only")
         val NATIVE_BLOCK_YT_SHORTS = booleanPreferencesKey("native_block_yt_shorts")
+        val NATIVE_YT_SEARCH_ONLY = booleanPreferencesKey("native_yt_search_only")
         val NATIVE_BLOCK_TT_FOR_YOU = booleanPreferencesKey("native_block_tt_for_you")
         val NATIVE_BLOCK_SNAP_SPOTLIGHT = booleanPreferencesKey("native_block_snap_spotlight")
+        val NATIVE_BLOCK_FB_REELS = booleanPreferencesKey("native_block_fb_reels")
+        val NATIVE_FB_DMS_ONLY = booleanPreferencesKey("native_fb_dms_only")
+        val NATIVE_BLOCK_X_VIDEO = booleanPreferencesKey("native_block_x_video")
+        val NATIVE_X_DMS_ONLY = booleanPreferencesKey("native_x_dms_only")
+        val NATIVE_ALLOW_FRIEND_REELS = booleanPreferencesKey("native_allow_friend_reels")
+
+        val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
+        val LAST_UPDATE_CHECK_TS = longPreferencesKey("last_update_check_ts")
         val APP_DAILY_LIMITS_RAW = stringPreferencesKey("app_daily_limits_raw")
         val HIDDEN_HOME_APPS = stringSetPreferencesKey("hidden_home_apps")
         val PLATFORM_ORDER_RAW = stringPreferencesKey("platform_order_raw")
@@ -313,9 +340,22 @@ class PreferencesManager(private val context: Context) {
 
             nativeReelsBlockerEnabled = prefs[NATIVE_REELS_BLOCKER_ENABLED] ?: true,
             nativeBlockIgReels = prefs[NATIVE_BLOCK_IG_REELS] ?: true,
+            nativeBlockIgExplore = prefs[NATIVE_BLOCK_IG_EXPLORE] ?: true,
+            nativeBlockIgStories = prefs[NATIVE_BLOCK_IG_STORIES] ?: false,
+            nativeBlockIgFeed = prefs[NATIVE_BLOCK_IG_FEED] ?: false,
+            nativeIgDmsOnlyMode = prefs[NATIVE_IG_DMS_ONLY] ?: false,
             nativeBlockYtShorts = prefs[NATIVE_BLOCK_YT_SHORTS] ?: true,
+            nativeYtSearchOnlyMode = prefs[NATIVE_YT_SEARCH_ONLY] ?: false,
             nativeBlockTtForYou = prefs[NATIVE_BLOCK_TT_FOR_YOU] ?: true,
             nativeBlockSnapSpotlight = prefs[NATIVE_BLOCK_SNAP_SPOTLIGHT] ?: true,
+            nativeBlockFacebookReels = prefs[NATIVE_BLOCK_FB_REELS] ?: true,
+            nativeFbDmsOnlyMode = prefs[NATIVE_FB_DMS_ONLY] ?: false,
+            nativeBlockXVideo = prefs[NATIVE_BLOCK_X_VIDEO] ?: true,
+            nativeXDmsOnlyMode = prefs[NATIVE_X_DMS_ONLY] ?: false,
+            nativeAllowFriendReels = prefs[NATIVE_ALLOW_FRIEND_REELS] ?: true,
+
+            autoCheckUpdates = prefs[AUTO_CHECK_UPDATES] ?: true,
+            lastUpdateCheckTs = prefs[LAST_UPDATE_CHECK_TS] ?: 0L,
             appDailyLimitsRaw = prefs[APP_DAILY_LIMITS_RAW] ?: "",
             hiddenHomeApps = prefs[HIDDEN_HOME_APPS] ?: emptySet(),
             platformOrder = prefs[PLATFORM_ORDER_RAW]
@@ -547,6 +587,10 @@ class PreferencesManager(private val context: Context) {
     }
 
     suspend fun setBooleanPreference(key: androidx.datastore.preferences.core.Preferences.Key<Boolean>, value: Boolean) {
+        context.dataStore.edit { it[key] = value }
+    }
+
+    suspend fun setLongPreference(key: androidx.datastore.preferences.core.Preferences.Key<Long>, value: Long) {
         context.dataStore.edit { it[key] = value }
     }
 

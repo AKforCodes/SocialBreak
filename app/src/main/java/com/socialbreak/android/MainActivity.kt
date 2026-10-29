@@ -18,10 +18,12 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,8 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.socialbreak.android.data.AppShortcutManager
+import com.socialbreak.android.data.AppUpdateManager
 import com.socialbreak.android.data.PreferencesManager
 import com.socialbreak.android.data.SocialBreakPreferences
+import com.socialbreak.android.data.UpdateCheckResult
+import com.socialbreak.android.data.UpdateInfo
 import com.socialbreak.android.ui.components.SocialBreakRibbonIcon
 import com.socialbreak.android.ui.screens.*
 import com.socialbreak.android.ui.theme.SocialBreakTheme
@@ -117,6 +123,7 @@ fun SocialBreakMainApp(
 ) {
     val scope = rememberCoroutineScope()
     val view = LocalView.current
+    val context = LocalContext.current
     val palette = SocialTheme.colors
 
     val tabs = remember { ScreenTab.values().toList() }
@@ -129,6 +136,24 @@ fun SocialBreakMainApp(
     var currentSubRoute by remember { mutableStateOf(SubRoute.NONE) }
     var initialWebAppPlatform by remember { mutableStateOf<String?>(null) }
     var didAutoLaunchCheck by remember { mutableStateOf(false) }
+    var updateBannerInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+
+    // Check for updates on startup if enabled
+    LaunchedEffect(prefs.autoCheckUpdates) {
+        if (prefs.autoCheckUpdates) {
+            val now = System.currentTimeMillis()
+            if (now - prefs.lastUpdateCheckTs > 86400000L || prefs.lastUpdateCheckTs == 0L) {
+                try {
+                    val mgr = AppUpdateManager(context)
+                    val res = mgr.checkForUpdate()
+                    if (res is UpdateCheckResult.UpdateAvailable) {
+                        updateBannerInfo = res.info
+                    }
+                    prefsManager.setLongPreference(PreferencesManager.LAST_UPDATE_CHECK_TS, now)
+                } catch (_: Exception) {}
+            }
+        }
+    }
 
     // Interactive Landing Tour state (me.f0.a in me_f0.java)
     var showLandingTour by remember(prefs.hasSeenLandingTour) {
@@ -262,6 +287,62 @@ fun SocialBreakMainApp(
                 .padding(innerPadding)
                 .background(palette.background)
         ) {
+            updateBannerInfo?.let { info ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF23253A))
+                        .border(1.dp, Color(0xFF6366F1).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                        .clickable {
+                            currentSubRoute = SubRoute.SETTINGS
+                            updateBannerInfo = null
+                        }
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .zIndex(50f),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.SystemUpdate,
+                            contentDescription = null,
+                            tint = Color(0xFF818CF8),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "SocialBreak ${info.latestVersion} available",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Tap to review changelog & install update",
+                                color = Color(0xFFA0A3B5),
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = { updateBannerInfo = null },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Dismiss",
+                            tint = Color(0xFF8E91A6),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+
             when (currentSubRoute) {
                 SubRoute.WEB_BLOCKING -> {
                     WebBlockingScreen(
